@@ -1,6 +1,8 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, JSON, Boolean
+from sqlalchemy import Column, String, Integer, Float, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
+from pydantic import BaseModel
+
 Base = declarative_base()
 
 class Vulnerability(Base):
