@@ -1,0 +1,13 @@
+=== Updating NVD Feeds ===
+Downloading: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-recent.json.gz
+Failed to download https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-recent.json.gz: 'charmap' codec can't encode character '\u2192' in position 6: character maps to <undefined>
+Downloading: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.gz
+Failed to download https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.gz: 'charmap' codec can't encode character '\u2192' in position 6: character maps to <undefined>
+
+=== Ingesting Feeds ===
+Opening gz file: C:\Users\DIVYATEJ\vulnx\backend\app\..\data\recent.json.gz
+Ingested 905 CVE items.
+Opening gz file: C:\Users\DIVYATEJ\vulnx\backend\app\..\data\modified.json.gz
+Ingested 2172 CVE items.
+
+=== Update complete ===
