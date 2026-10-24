@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: sqlite:////app/data/vulnx.db
+    volumes:
+      - vulnx-mobile-data:/app/data
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  updater:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.scheduler"]
+    environment:
+      DATABASE_URL: sqlite:////app/data/vulnx.db
+      UPDATE_INTERVAL_HOURS: ${UPDATE_INTERVAL_HOURS:-24}
+    volumes:
+      - vulnx-mobile-data:/app/data
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      VULNX_API_DOMAIN: ${VULNX_API_DOMAIN:?Set VULNX_API_DOMAIN in .env.mobile-api}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile.mobile-api:/etc/caddy/Caddyfile:ro
+      - vulnx-caddy-data:/data
+      - vulnx-caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  vulnx-mobile-data:
+    name: vulnx-mobile-data
+  vulnx-caddy-data:
+  vulnx-caddy-config:
