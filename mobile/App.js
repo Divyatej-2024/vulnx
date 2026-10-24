@@ -7,7 +7,6 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   ink: '#182230', muted: '#7f8b9a', subtle: '#a1aab6', line: '#e8ecf1',
@@ -52,6 +52,10 @@ function cacheKey(root, search, severity, offset) {
 }
 
 export default function App() {
+  return <SafeAreaProvider><AppContent /></SafeAreaProvider>;
+}
+
+function AppContent() {
   const [serverUrl, setServerUrl] = useState(ENV_API_URL);
   const [serverDraft, setServerDraft] = useState(ENV_API_URL);
   const [storageReady, setStorageReady] = useState(false);
@@ -302,17 +306,19 @@ export default function App() {
       />
 
       <Modal visible={!!selected} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelected(null)}>
-        <SafeAreaView style={styles.detailScreen}>
-          <View style={styles.detailTop}><Text style={styles.detailEyebrow}>VULNERABILITY DETAILS</Text><Pressable onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.closeButtonText}>×</Text></Pressable></View>
-          {selected && <ScrollView contentContainerStyle={styles.detailContent}>
-            <Text style={styles.detailCve}>{selected.cve_id}</Text>
-            <SeverityBadge severity={severityFor(selected.cvss_v3)} />
-            <View style={styles.detailMetrics}><Text style={styles.detailMetric}>CVSS v3  <Text style={styles.detailMetricValue}>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</Text></Text><Text style={styles.detailMetric}>Published  <Text style={styles.detailMetricValue}>{dateLabel(selected.published_date)}</Text></Text></View>
-            <Text style={styles.detailSectionTitle}>Description</Text>
-            {detailLoading ? <ActivityIndicator color={COLORS.blue} /> : <Text style={styles.detailDescription}>{selected.description || 'No description provided by the source.'}</Text>}
-            <Text style={styles.detailFooter}>Priority is normalized from CVSS v3 and is not a predictive model.</Text>
-          </ScrollView>}
-        </SafeAreaView>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.detailScreen}>
+            <View style={styles.detailTop}><Text style={styles.detailEyebrow}>VULNERABILITY DETAILS</Text><Pressable onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.closeButtonText}>×</Text></Pressable></View>
+            {selected && <ScrollView contentContainerStyle={styles.detailContent}>
+              <Text style={styles.detailCve}>{selected.cve_id}</Text>
+              <SeverityBadge severity={severityFor(selected.cvss_v3)} />
+              <View style={styles.detailMetrics}><Text style={styles.detailMetric}>CVSS v3  <Text style={styles.detailMetricValue}>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</Text></Text><Text style={styles.detailMetric}>Published  <Text style={styles.detailMetricValue}>{dateLabel(selected.published_date)}</Text></Text></View>
+              <Text style={styles.detailSectionTitle}>Description</Text>
+              {detailLoading ? <ActivityIndicator color={COLORS.blue} /> : <Text style={styles.detailDescription}>{selected.description || 'No description provided by the source.'}</Text>}
+              <Text style={styles.detailFooter}>Priority is normalized from CVSS v3 and is not a predictive model.</Text>
+            </ScrollView>}
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
