@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API = process.env.REACT_APP_API_URL || '/api/v1';
 const PAGE_SIZE = 12;
 const severityFor = (score) => {
   if (score == null) return 'Unknown';
@@ -23,6 +23,44 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installHelp, setInstallHelp] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+
+  useEffect(() => {
+    const onInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('beforeinstallprompt', onInstallPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onInstallPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) {
+      setInstallHelp(true);
+      return;
+    }
+    await installPrompt.prompt();
+    const result = await installPrompt.userChoice;
+    if (result.outcome === 'accepted') setIsInstalled(true);
+    setInstallPrompt(null);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,8 +105,9 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><button className="refresh-button" onClick={load} disabled={loading}><span className={loading ? 'refresh-spin' : ''}>↻</span> Refresh data</button></header>
+        <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions">{!isInstalled && <button className="install-button" onClick={installApp}>⬇ <span>Install app</span></button>}<button className="refresh-button" onClick={load} disabled={loading}><span className={loading ? 'refresh-spin' : ''}>↻</span> Refresh data</button></div></header>
         <div className="content-wrap">
+          {!isOnline && <div className="offline-banner" role="status"><span className="offline-indicator" /> Offline mode · showing saved feed data where available</div>}
           <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className="feed-status"><span className="live-dot" /> Feed operational</div></section>
 
           <section className="stats-grid" aria-label="Vulnerability statistics">
@@ -92,6 +131,7 @@ function App() {
       </main>
 
       {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close details" onClick={() => setSelected(null)}>×</button><div className="eyebrow">VULNERABILITY DETAILS</div><h2 id="detail-title">{selected.cve_id}</h2><div className="detail-meta"><span className={`severity severity-${severityFor(selected.cvss_v3).toLowerCase()}`}><i />{severityFor(selected.cvss_v3)}</span><span>CVSS v3 <strong>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</strong></span><span>Published <strong>{prettyDate(selected.published_date)}</strong></span></div><h3>Description</h3><p className="detail-description">{selected.description}</p><a className="nvd-link" href={`https://nvd.nist.gov/vuln/detail/${selected.cve_id}`} target="_blank" rel="noreferrer">View official NVD record <span>↗</span></a></section></div>}
+      {installHelp && <div className="modal-backdrop" role="presentation" onClick={() => setInstallHelp(false)}><section className="detail-modal install-guide" role="dialog" aria-modal="true" aria-labelledby="install-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close install instructions" onClick={() => setInstallHelp(false)}>×</button><div className="eyebrow">VULNX FOR MOBILE</div><h2 id="install-title">Add VulnX to your home screen</h2><p className="detail-description">Open your browser menu or Share menu, then choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. VulnX will open in its own window and keep the latest feed data available when you are offline.</p><button className="refresh-button" onClick={() => setInstallHelp(false)}>Got it</button></section></div>}
     </div>
   );
 }
