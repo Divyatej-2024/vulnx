@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "VulnX",
+    "slug": "vulnx-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111b2a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vulnx.mobile"
+    },
+    "android": {
+      "package": "com.vulnx.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#111b2a"
+      }
+    }
+  }
+}

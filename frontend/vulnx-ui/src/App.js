@@ -83,6 +83,17 @@ function App() {
   }, [page, search, severity]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    const timer = window.setInterval(load, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [load]);
   useEffect(() => { setPage(0); }, [search, severity]);
 
   const openDetails = async (cveId) => {

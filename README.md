@@ -12,7 +12,7 @@ Requirements: Python 3.10+ and Node.js 18+.
    cd backend
    py -m venv .venv
    .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
+   pip install -r requirements-api.txt
    uvicorn app.main:app --reload
    ```
 
@@ -28,6 +28,17 @@ Requirements: Python 3.10+ and Node.js 18+.
 
    Open <http://localhost:3000>. The React development server proxies `/api/v1` to the local API.
 
+### Preview on a phone over your home Wi-Fi
+
+Keep both development servers running on the PC. Start the API with `uvicorn app.main:app --reload --host 0.0.0.0`. In the frontend terminal, set the development server to listen on the network and start it:
+
+```powershell
+$env:HOST = "0.0.0.0"
+npm start
+```
+
+On the PC, run `ipconfig` and find its IPv4 address. On the phone connected to the same Wi-Fi, open `http://<PC-IPv4-address>:3000`. Approve Windows Firewall's private-network prompt if it appears. This is for previewing the app on your phone; browser installation requires an HTTPS deployment, as described below.
+
 ## Load vulnerability data
 
 From the `backend` directory, download and ingest the current NVD recent and modified feeds:
@@ -37,6 +48,20 @@ python -m app.update_nvd
 ```
 
 Feed refresh requires internet access and can take time. The ingester accepts both the legacy NVD format and the current CVE 2.0 format. Records are upserted by CVE identifier.
+
+## Automatic mobile deployment
+
+For a phone-ready version that updates without your PC staying on, run the Docker Compose stack on an always-on host with Docker Compose installed:
+
+```powershell
+docker compose up --build -d
+```
+
+The frontend is served on port `8080` by default. The `updater` service refreshes the NVD feeds immediately when it starts and every 24 hours after that. Its output is available with `docker compose logs -f updater`; the SQLite database and downloaded feeds persist in the `vulnx-data` Docker volume. Set `UPDATE_INTERVAL_HOURS` or `VULNX_PORT` in a `.env` file beside `docker-compose.yml` to change those defaults.
+
+To install it on your phone, deploy this stack to a host reachable from the internet, point a domain to it, and terminate HTTPS at a reverse proxy in front of port `8080`. Open the HTTPS address in your phone's browser and choose **Install app** or **Add to Home Screen**. The app view refreshes every five minutes while open and when you return to it; offline mode can show previously loaded records. `http://localhost:8080` is useful for desktop preview, but a phone needs a hosted HTTPS address for installation.
+
+Keep the Windows Task Scheduler option below for a local-only setup where the PC is always on. Use either that local updater or the Compose updater for a given database, rather than running both against the same SQLite file.
 
 ### Run NVD refresh automatically on Windows
 
@@ -70,7 +95,10 @@ The dashboard's priority bar is CVSS v3 divided by 10. It is a transparent sever
 ```text
 backend/       FastAPI API, SQLAlchemy models, NVD ingestion and feature export
 frontend/      React dashboard
+mobile/        Standalone Expo / React Native Android and iOS app
 ml_pipeline/   Experimental model training entry point
 ```
 
 The ML training script currently expects a generated feature dataset; no trained model is included. The API and dashboard work without the model.
+
+See [mobile/README.md](mobile/README.md) for phone development and Android/iOS build instructions.

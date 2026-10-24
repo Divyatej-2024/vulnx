@@ -5,9 +5,14 @@ __pycache__/
 backend/.venv/
 backend/logs/scheduled_update.log
 backend/dev.db
+*.db-shm
+*.db-wal
 data/
 # Node
 node_modules/
+mobile/.expo/
+mobile/.eas/
+mobile/dist/
 # OS
 Thumbs.db
 .DS_Store
