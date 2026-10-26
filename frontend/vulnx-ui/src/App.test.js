@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axios from 'axios';
 import App from './App';
 
-jest.mock('axios');
+jest.mock('axios', () => ({ get: jest.fn() }));
 
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
