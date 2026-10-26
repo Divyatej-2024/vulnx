@@ -29,6 +29,7 @@ const PRIVACY_POLICY_URL = 'https://vulnx-six.vercel.app/privacy.html';
 const PAGE_SIZE = 20;
 const SEVERITIES = ['All', 'Critical', 'High', 'Medium', 'Low', 'Unknown'];
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+const DEFAULT_API_URL = 'https://backend-rho-three-46.vercel.app/api/v1';
 
 function apiRoot(value) {
   const clean = value.trim().replace(/\/+$/, '');
@@ -59,8 +60,8 @@ export default function App() {
 }
 
 function AppContent() {
-  const [serverUrl, setServerUrl] = useState(ENV_API_URL);
-  const [serverDraft, setServerDraft] = useState(ENV_API_URL);
+  const [serverUrl, setServerUrl] = useState(ENV_API_URL || DEFAULT_API_URL);
+  const [serverDraft, setServerDraft] = useState(ENV_API_URL || DEFAULT_API_URL);
   const [storageReady, setStorageReady] = useState(false);
   const [privacyAcknowledged, setPrivacyAcknowledged] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -125,7 +126,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (!root) return undefined;
+    if (!privacyAcknowledged || !root) return undefined;
     let active = true;
     const listKey = cacheKey(root, debouncedQuery, severity, offset);
 
@@ -190,7 +191,7 @@ function AppContent() {
 
     load();
     return () => { active = false; };
-  }, [root, debouncedQuery, severity, offset, refreshKey]);
+  }, [root, debouncedQuery, severity, offset, refreshKey, privacyAcknowledged]);
 
   const saveServer = useCallback(async () => {
     Keyboard.dismiss();
