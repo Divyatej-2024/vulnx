@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API = process.env.REACT_APP_API_URL || '/api/v1';
+const configuredApiUrl = process.env.REACT_APP_API_URL?.trim();
+const API = (configuredApiUrl || '/api/v1').replace(/\\/+$/, '');
+// CRA embeds environment variables at build time. A production build without
+// this value cannot reach the separate FastAPI service from Vercel's static host.
+const API_CONFIG_MISSING = process.env.NODE_ENV === 'production' && !configuredApiUrl;
 const PAGE_SIZE = 12;
 const severityFor = (score) => {
   if (score == null) return 'Unknown';
@@ -66,6 +70,13 @@ function App() {
     setLoading(true);
     setError('');
     try {
+      if (API_CONFIG_MISSING) {
+        setVulns([]);
+        setTotal(0);
+        setSummary(null);
+        setError('Production API URL is not configured. Set REACT_APP_API_URL in Vercel to your public HTTPS VulnX API address ending in /api/v1, then redeploy.');
+        return;
+      }
       const params = { limit: PAGE_SIZE, offset: page * PAGE_SIZE };
       if (search.trim()) params.search = search.trim();
       if (severity) params.severity = severity.toLowerCase();
@@ -119,7 +130,7 @@ function App() {
         <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions">{!isInstalled && <button className="install-button" onClick={installApp}>⬇ <span>Install app</span></button>}<button className="refresh-button" onClick={load} disabled={loading}><span className={loading ? 'refresh-spin' : ''}>↻</span> Refresh data</button></div></header>
         <div className="content-wrap">
           {!isOnline && <div className="offline-banner" role="status"><span className="offline-indicator" /> Offline mode · showing saved feed data where available</div>}
-          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className="feed-status"><span className="live-dot" /> Feed operational</div></section>
+          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className="feed-status"><span className="live-dot" /> {error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
 
           <section className="stats-grid" aria-label="Vulnerability statistics">
             <Stat label="Tracked vulnerabilities" value={summary?.total} icon="◈" tone="blue" note="Across ingested NVD records" />
