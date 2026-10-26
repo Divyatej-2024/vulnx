@@ -1,0 +1,58 @@
+name: VulnX Mobile QA
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-qa.yml"
+  push:
+    branches:
+      - "qa/**"
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-config-and-bundle:
+    name: Android configuration and JavaScript bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+      - name: Check Android release requirements
+        run: |
+          node - <<'NODE'
+          const config = require('./app.json').expo;
+          const assert = (condition, message) => {
+            if (!condition) {
+              console.error(message);
+              process.exitCode = 1;
+            }
+          };
+          assert(config.android?.package === 'com.vulnx.mobile', 'Unexpected Android application ID');
+          assert(Number(config.android?.targetSdkVersion) >= 36, 'Google Play submission requires target API 36 or higher as of 31 August 2026');
+          assert(Array.isArray(config.android?.permissions) && config.android.permissions.includes('android.permission.INTERNET'), 'Internet permission must be explicit');
+          assert(!config.android.permissions.some(p => /CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_CONTACTS|READ_SMS|CALL_LOG/i.test(p)), 'Unexpected sensitive Android permission configured');
+          console.log('Android app identity, target API and configured permissions verified.');
+          NODE
+      - name: Export Android JavaScript bundle
+        run: npx expo export --platform android --output-dir dist

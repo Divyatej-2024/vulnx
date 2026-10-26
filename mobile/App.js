@@ -4,6 +4,7 @@ import {
   AppState,
   FlatList,
   Keyboard,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -23,6 +24,8 @@ const COLORS = {
   green: '#25a976', red: '#d94f57', amber: '#d78228', yellow: '#b78a1d',
 };
 const API_STORAGE_KEY = '@vulnx/mobile-api-url';
+const PRIVACY_ACK_KEY = '@vulnx/privacy-ack-v1';
+const PRIVACY_POLICY_URL = 'https://vulnx-six.vercel.app/privacy.html';
 const PAGE_SIZE = 20;
 const SEVERITIES = ['All', 'Critical', 'High', 'Medium', 'Low', 'Unknown'];
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL || '';
@@ -59,6 +62,8 @@ function AppContent() {
   const [serverUrl, setServerUrl] = useState(ENV_API_URL);
   const [serverDraft, setServerDraft] = useState(ENV_API_URL);
   const [storageReady, setStorageReady] = useState(false);
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [vulnerabilities, setVulnerabilities] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -80,11 +85,15 @@ function AppContent() {
 
   useEffect(() => {
     let mounted = true;
-    AsyncStorage.getItem(API_STORAGE_KEY).then((savedUrl) => {
+    Promise.all([
+      AsyncStorage.getItem(API_STORAGE_KEY),
+      AsyncStorage.getItem(PRIVACY_ACK_KEY),
+    ]).then(([savedUrl, privacyAck]) => {
       if (mounted && !ENV_API_URL && savedUrl) {
         setServerUrl(savedUrl);
         setServerDraft(savedUrl);
       }
+      if (mounted && privacyAck === 'accepted-v1') setPrivacyAcknowledged(true);
     }).catch(() => {}).finally(() => {
       if (mounted) setStorageReady(true);
     });
@@ -188,9 +197,10 @@ function AppContent() {
     const nextRoot = apiRoot(serverDraft);
     try {
       const parsed = new URL(nextRoot);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an http or https address.');
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an HTTPS server address.');
+      if (!__DEV__ && parsed.protocol !== 'https:') throw new Error('For security, release builds require an HTTPS API address.');
     } catch {
-      setError('Enter a full server address, for example http://192.168.1.20:8000');
+      setError(__DEV__ ? 'Enter a full server address, for example http://192.168.1.20:8000' : 'Enter a valid HTTPS API address, for example https://your-api.example.com');
       return;
     }
     const clean = serverDraft.trim().replace(/\/+$/, '');
@@ -201,6 +211,20 @@ function AppContent() {
     setError('');
     setShowSettings(false);
   }, [serverDraft]);
+
+  const acknowledgePrivacy = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(PRIVACY_ACK_KEY, 'accepted-v1');
+    } catch {}
+    setPrivacyAcknowledged(true);
+    setShowPrivacy(false);
+  }, []);
+
+  const openPrivacyPolicy = useCallback(() => {
+    Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
+      setError('Could not open the privacy policy. Visit vulnx-six.vercel.app/privacy.html in your browser.');
+    });
+  }, []);
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -232,6 +256,17 @@ function AppContent() {
     return <SafeAreaView style={styles.loadingScreen}><StatusBar barStyle="light-content" backgroundColor={COLORS.navy} /><ActivityIndicator color={COLORS.blue} size="large" /></SafeAreaView>;
   }
 
+  if (!privacyAcknowledged || showPrivacy) {
+    return (
+      <PrivacyScreen
+        firstVisit={!privacyAcknowledged}
+        onAcknowledge={acknowledgePrivacy}
+        onClose={() => setShowPrivacy(false)}
+        onOpenPolicy={openPrivacyPolicy}
+      />
+    );
+  }
+
   if (!root || showSettings) {
     return (
       <SafeAreaView style={styles.setupScreen}>
@@ -255,6 +290,7 @@ function AppContent() {
         />
         {!!error && <Text style={styles.setupError}>{error}</Text>}
         <Pressable style={styles.primaryButton} onPress={saveServer}><Text style={styles.primaryButtonText}>Connect to VulnX</Text></Pressable>
+        <Pressable style={styles.policyButton} onPress={() => setShowPrivacy(true)}><Text style={styles.policyButtonText}>Privacy &amp; security</Text></Pressable>
         {showSettings && <Pressable style={styles.cancelButton} onPress={() => { setShowSettings(false); setServerDraft(serverUrl); setError(''); }}><Text style={styles.cancelButtonText}>Cancel</Text></Pressable>}
         <Text style={styles.setupFootnote}>The API must be reachable from this phone. For use outside your home network, use your hosted HTTPS API address.</Text>
       </SafeAreaView>
@@ -266,7 +302,10 @@ function AppContent() {
       <View style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.brandInline}><View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>V</Text></View><Text style={styles.heroBrand}>VulnX</Text></View>
-          <Pressable onPress={() => { setServerDraft(serverUrl); setShowSettings(true); setError(''); }} style={styles.settingsButton} accessibilityLabel="API settings"><Text style={styles.settingsButtonText}>⚙</Text></Pressable>
+          <View style={styles.heroActions}>
+            <Pressable onPress={() => setShowPrivacy(true)} style={styles.privacyHeaderButton} accessibilityLabel="Privacy and security"><Text style={styles.privacyHeaderText}>Privacy</Text></Pressable>
+            <Pressable onPress={() => { setServerDraft(serverUrl); setShowSettings(true); setError(''); }} style={styles.settingsButton} accessibilityLabel="API settings"><Text style={styles.settingsButtonText}>⚙</Text></Pressable>
+          </View>
         </View>
         <Text style={styles.heroEyebrow}>THREAT INTELLIGENCE</Text>
         <Text style={styles.heroTitle}>Vulnerability{ '\n' }overview</Text>
@@ -324,6 +363,40 @@ function AppContent() {
   );
 }
 
+function PrivacyScreen({ firstVisit, onAcknowledge, onClose, onOpenPolicy }) {
+  return (
+    <SafeAreaView style={styles.privacyScreen}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.navy} />
+      <ScrollView contentContainerStyle={styles.privacyContent}>
+        <View style={styles.brandMark}><Text style={styles.brandMarkText}>V</Text></View>
+        <Text style={styles.privacyEyebrow}>VULNX · PRIVACY &amp; SECURITY</Text>
+        <Text style={styles.privacyTitle}>{firstVisit ? 'Before you use VulnX' : 'Privacy & security'}</Text>
+        <Text style={styles.privacyIntro}>VulnX displays publicly available vulnerability information. Review how the app handles network requests and data stored on this device.</Text>
+        <View style={styles.privacyCard}>
+          <Text style={styles.privacyCardTitle}>Public vulnerability data</Text>
+          <Text style={styles.privacyCardBody}>The app sends requests to the configured VulnX API to retrieve CVE records, severity information and dashboard statistics. The app does not currently offer user accounts.</Text>
+        </View>
+        <View style={styles.privacyCard}>
+          <Text style={styles.privacyCardTitle}>Saved on this device</Text>
+          <Text style={styles.privacyCardBody}>The app stores the selected API address and caches public vulnerability responses locally so previously loaded records may remain available offline. Clear app storage or uninstall the app to remove this local data.</Text>
+        </View>
+        <View style={styles.privacyCard}>
+          <Text style={styles.privacyCardTitle}>Network and service logs</Text>
+          <Text style={styles.privacyCardBody}>The API and hosting providers receive requests from your device and may process technical information such as IP address, request time and requested CVE/search parameters. Exact log fields and retention depend on provider settings.</Text>
+        </View>
+        <View style={styles.privacyCard}>
+          <Text style={styles.privacyCardTitle}>Permissions and tracking</Text>
+          <Text style={styles.privacyCardBody}>The app does not need location, contacts, camera, microphone, SMS or call-log access for its current features. No optional advertising or analytics consent is requested by this notice. The acknowledgement is not consent to tracking.</Text>
+        </View>
+        <Pressable style={styles.policyButton} onPress={onOpenPolicy}><Text style={styles.policyButtonText}>Read the full privacy policy ↗</Text></Pressable>
+        <Text style={styles.privacyFootnote}>Only connect to an API server you trust. Release builds require HTTPS for API connections.</Text>
+        <Pressable style={styles.primaryButton} onPress={onAcknowledge}><Text style={styles.primaryButtonText}>{firstVisit ? 'I understand — continue' : 'Done'}</Text></Pressable>
+        {!firstVisit && <Pressable style={styles.cancelButton} onPress={onClose}><Text style={styles.cancelButtonText}>Close</Text></Pressable>}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 function StatCard({ label, value, tone }) {
   return <View style={styles.statCard}><View style={[styles.statDot, { backgroundColor: tone === 'red' ? COLORS.red : tone === 'amber' ? COLORS.amber : COLORS.blue }]} /><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value == null ? '—' : Number(value).toLocaleString()}</Text></View>;
 }
@@ -351,6 +424,20 @@ function VulnerabilityCard({ item, onPress }) {
 
 const styles = StyleSheet.create({
   loadingScreen: { flex: 1, backgroundColor: COLORS.navy, alignItems: 'center', justifyContent: 'center' },
+  privacyScreen: { flex: 1, backgroundColor: COLORS.navy },
+  privacyContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 36 },
+  privacyEyebrow: { color: '#aeb8ff', fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginTop: 24, marginBottom: 8 },
+  privacyTitle: { color: COLORS.white, fontSize: 28, fontWeight: '800', letterSpacing: -0.5, marginBottom: 10 },
+  privacyIntro: { color: '#c3ccda', fontSize: 14, lineHeight: 21, marginBottom: 18 },
+  privacyCard: { borderWidth: 1, borderColor: '#34445b', borderRadius: 13, backgroundColor: '#18263a', padding: 15, marginBottom: 10 },
+  privacyCardTitle: { color: COLORS.white, fontSize: 13, fontWeight: '800', marginBottom: 6 },
+  privacyCardBody: { color: '#c3ccda', fontSize: 12, lineHeight: 19 },
+  privacyFootnote: { color: '#aab6c7', fontSize: 11, lineHeight: 17, marginVertical: 18 },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  privacyHeaderButton: { height: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#223148', alignItems: 'center', justifyContent: 'center' },
+  privacyHeaderText: { color: '#c4cce0', fontSize: 11, fontWeight: '700' },
+  policyButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#4b5d79', borderRadius: 9, paddingVertical: 10, paddingHorizontal: 12, marginTop: 4, marginBottom: 8 },
+  policyButtonText: { color: '#d8ddff', fontSize: 12, fontWeight: '700' },
   setupScreen: { flex: 1, backgroundColor: COLORS.navy, paddingHorizontal: 26, paddingTop: 35 },
   setupBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 60 },
   brandMark: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#5968e8', alignItems: 'center', justifyContent: 'center' },

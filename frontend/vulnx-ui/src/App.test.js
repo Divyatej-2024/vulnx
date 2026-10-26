@@ -5,6 +5,7 @@ import App from './App';
 jest.mock('axios', () => ({ get: jest.fn() }));
 
 beforeEach(() => {
+  window.localStorage.clear();
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: jest.fn().mockImplementation((query) => ({
@@ -68,6 +69,7 @@ afterEach(() => {
 
 test('renders the dashboard and vulnerability data returned by the API', async () => {
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
 
   expect(screen.getByRole('heading', { name: /vulnerability overview/i })).toBeInTheDocument();
   expect(await screen.findByRole('row', { name: /CVE-2025-1234/i })).toBeInTheDocument();
@@ -84,6 +86,7 @@ test('renders the dashboard and vulnerability data returned by the API', async (
 
 test('opens and displays vulnerability details when a result is selected', async () => {
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
 
   const row = await screen.findByRole('row', { name: /CVE-2025-1234/i });
   fireEvent.click(row);

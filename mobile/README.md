@@ -23,6 +23,10 @@ Requirements: Node.js LTS, this repository, and Expo Go installed on the phone.
 
    Scan the QR code with Expo Go. The phone and development computer should be on the same Wi-Fi. If local network discovery is blocked, use `npx expo start --tunnel`.
 
+## Google Play release preparation
+
+The Android app uses Expo / React Native (not a web wrapper). The current application ID is `com.vulnx.mobile`; confirm that this is the final permanent ID before first Play submission. The app is configured for Android target API 36 and requests internet access only, while blocking unrelated sensitive permissions where supported by Expo config. Release builds require an HTTPS API URL. Review the in-app privacy acknowledgement and `../frontend/vulnx-ui/public/privacy.html` before publishing; the privacy policy must match the final infrastructure and all bundled dependencies. Build an Android App Bundle with the `production` EAS profile, test the exact bundle on devices, and complete Play Console's Data safety, app content, target audience, content rating, privacy-policy, and signing steps. Never upload signing credentials to Git.
+
 ## Features
 
 - CVE list with search, severity filters, and paginated loading
