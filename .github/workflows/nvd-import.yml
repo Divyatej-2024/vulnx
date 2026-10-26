@@ -1,0 +1,52 @@
+name: VulnX NVD data import
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_import:
+        description: "Import all annual NVD feeds (initial import; may take a while)"
+        required: true
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vulnx-nvd-import
+  cancel-in-progress: false
+
+jobs:
+  import-nvd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        run: python -m pip install --upgrade pip && python -m pip install .
+
+      - name: Import NVD CVE data
+        env:
+          FULL_IMPORT: ${{ github.event_name == 'workflow_dispatch' && inputs.full_import }}
+        run: |
+          if [ "$FULL_IMPORT" = "true" ]; then
+            python scripts/import_nvd_feeds.py --mode full
+          else
+            python scripts/import_nvd_feeds.py --mode incremental
+          fi
