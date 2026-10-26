@@ -4,7 +4,7 @@ import json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app import ingest
+from app.ingest import nvd_ingest
 from app.models import Base, Vulnerability
 
 
@@ -13,13 +13,16 @@ def _write_feed(path, document):
         json.dump(document, handle)
 
 
-def test_ingests_current_nvd_format_and_is_idempotent(tmp_path, monkeypatch):
-    database_path = tmp_path / "ingest.db"
-    engine = create_engine(f"sqlite:///{database_path}")
+def _test_session(monkeypatch, tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'ingest.db'}")
     Base.metadata.create_all(engine)
-    TestSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    monkeypatch.setattr(ingest, "SessionLocal", TestSessionLocal)
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    monkeypatch.setattr(nvd_ingest, "SessionLocal", session_factory)
+    return engine, session_factory
 
+
+def test_ingests_current_nvd_format_and_is_idempotent(tmp_path, monkeypatch):
+    engine, TestSessionLocal = _test_session(monkeypatch, tmp_path)
     feed_path = tmp_path / "current.json.gz"
     _write_feed(feed_path, {
         "vulnerabilities": [{
@@ -34,8 +37,8 @@ def test_ingests_current_nvd_format_and_is_idempotent(tmp_path, monkeypatch):
         }]
     })
 
-    ingest.ingest_nvd_gz(str(feed_path))
-    ingest.ingest_nvd_gz(str(feed_path))
+    nvd_ingest.ingest_nvd_gz(str(feed_path))
+    nvd_ingest.ingest_nvd_gz(str(feed_path))
 
     with TestSessionLocal() as session:
         rows = session.query(Vulnerability).all()
@@ -48,12 +51,7 @@ def test_ingests_current_nvd_format_and_is_idempotent(tmp_path, monkeypatch):
 
 
 def test_ingests_legacy_nvd_format(tmp_path, monkeypatch):
-    database_path = tmp_path / "legacy.db"
-    engine = create_engine(f"sqlite:///{database_path}")
-    Base.metadata.create_all(engine)
-    TestSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    monkeypatch.setattr(ingest, "SessionLocal", TestSessionLocal)
-
+    engine, TestSessionLocal = _test_session(monkeypatch, tmp_path)
     feed_path = tmp_path / "legacy.json.gz"
     _write_feed(feed_path, {
         "CVE_Items": [{
@@ -68,7 +66,7 @@ def test_ingests_legacy_nvd_format(tmp_path, monkeypatch):
         }]
     })
 
-    ingest.ingest_nvd_gz(str(feed_path))
+    nvd_ingest.ingest_nvd_gz(str(feed_path))
 
     with TestSessionLocal() as session:
         row = session.query(Vulnerability).filter_by(cve_id="CVE-2017-0001").one()
