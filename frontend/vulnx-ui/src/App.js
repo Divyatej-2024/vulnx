@@ -3,7 +3,7 @@ import axios from 'axios';
 import './App.css';
 
 const configuredApiUrl = process.env.REACT_APP_API_URL?.trim();
-const API = (configuredApiUrl || '/api/v1').replace(/\\/+$/, '');
+const API = (configuredApiUrl || '/api/v1').replace(/\/+$/, '');
 // CRA embeds environment variables at build time. A production build without
 // this value cannot reach the separate FastAPI service from Vercel's static host.
 const API_CONFIG_MISSING = process.env.NODE_ENV === 'production' && !configuredApiUrl;
