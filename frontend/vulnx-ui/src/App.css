@@ -32,3 +32,25 @@
 @media(max-width:900px){.import-panel{grid-template-columns:58px minmax(0,1fr);gap:14px;padding:18px}.import-orbit{width:54px;height:54px}.import-orbit-core{width:33px;height:33px}.import-retry{grid-column:2;justify-self:start;margin-top:-2px}}
 @media(max-width:700px){.import-panel{grid-template-columns:42px minmax(0,1fr);gap:12px;margin-bottom:16px;padding:15px 13px;border-radius:11px}.import-orbit{width:40px;height:40px}.import-orbit:before{inset:4px}.import-orbit:after{inset:-3px}.import-orbit-core{width:27px;height:27px;border-radius:8px;font-size:10px}.import-copy h2{font-size:14px;line-height:1.35}.import-copy p{font-size:10px;line-height:1.65}.import-progress{margin-top:11px}.import-foot{font-size:8px;gap:5px 12px}.import-retry{grid-column:1 / -1;justify-self:stretch;margin-top:0;padding:10px}.feed-status{white-space:nowrap}.stats-grid{margin-bottom:16px}}
 @media(prefers-reduced-motion:reduce){.wait-dot,.import-orbit:before,.import-orbit:after,.import-progress span{animation:none!important}.import-progress span{width:38%}}
+
+/* Privacy notice and first-use acknowledgement */
+.privacy-backdrop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(8,15,28,.72);backdrop-filter:blur(5px);overflow-y:auto}
+.privacy-dialog{width:min(100%,620px);max-height:min(92vh,850px);overflow-y:auto;background:#fff;border:1px solid #e6eaf1;border-radius:18px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.28);color:#182230}
+.privacy-mark{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#7985ff,#5362e8);color:white;font:700 24px 'Space Grotesk',sans-serif}
+.privacy-eyebrow{font-size:10px;letter-spacing:1.6px;font-weight:700;color:#5967e8;margin:18px 0 7px}
+.privacy-dialog h2{font:700 25px 'Space Grotesk',sans-serif;letter-spacing:-.5px;margin:0 0 10px}
+.privacy-intro{font-size:13px;line-height:1.7;color:#687586;margin:0 0 18px}
+.privacy-points{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.privacy-points article{border:1px solid #e8ecf2;background:#fafbfe;border-radius:10px;padding:13px}
+.privacy-points strong{font-size:12px;color:#293548}
+.privacy-points p{font-size:11px;line-height:1.65;color:#6d7888;margin:6px 0 0}
+.privacy-policy-link{font-size:12px;margin:18px 0 14px;color:#596779}
+.privacy-policy-link a{color:#4e5fdd;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.privacy-actions{display:flex;justify-content:flex-end;gap:9px;border-top:1px solid #edf0f4;padding-top:16px}
+.privacy-actions button{border-radius:8px;padding:10px 15px;font:600 12px 'DM Sans',sans-serif;cursor:pointer}
+.privacy-primary{border:1px solid #5362e8;background:#5362e8;color:white}
+.privacy-primary:hover{background:#414fce}
+.privacy-secondary{border:1px solid #dfe4ec;background:white;color:#465367}
+.privacy-footnote{font-size:10px;color:#929cab;text-align:center;margin:13px 0 0}
+@media(max-width:600px){.privacy-backdrop{padding:0;align-items:stretch}.privacy-dialog{max-height:100vh;width:100%;border-radius:0;padding:24px 18px}.privacy-points{grid-template-columns:1fr}.privacy-dialog h2{font-size:22px}}
+@media(prefers-reduced-motion:reduce){.privacy-backdrop{backdrop-filter:none}}
