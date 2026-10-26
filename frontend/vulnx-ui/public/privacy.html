@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index,follow"><meta name="theme-color" content="#111b2a">
+<title>Privacy Policy | VulnX</title>
+<style>
+:root{color-scheme:light;--ink:#182230;--muted:#586779;--line:#e4e9f0;--accent:#5362e8}*{box-sizing:border-box}body{margin:0;background:#f7f8fb;color:var(--ink);font:16px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:860px;margin:40px auto;padding:36px;background:#fff;border:1px solid var(--line);border-radius:16px}h1,h2{line-height:1.25}h1{margin:0 0 8px;font-size:2rem}h2{margin-top:30px;font-size:1.2rem}.muted{color:var(--muted)}a{color:var(--accent);overflow-wrap:anywhere}li{margin:.35rem 0}.notice{padding:14px 16px;background:#f4f6ff;border-left:4px solid var(--accent);border-radius:6px}@media(max-width:600px){main{margin:0;padding:24px 18px;border:0;border-radius:0}}
+</style>
+</head>
+<body><main>
+<p class="muted">VulnX Vulnerability Intelligence</p><h1>Privacy Policy</h1><p class="muted">Last reviewed: 26 October 2026</p>
+<p>This policy describes the current VulnX web application. It must be reviewed against the final production infrastructure and Android release before publication.</p>
+<div class="notice"><strong>Current scope:</strong> VulnX is a public vulnerability-intelligence dashboard. The current frontend does not provide user registration, advertising, or intentional analytics tracking. This does not exclude technical logs processed by independent hosting providers.</div>
+<h2>1. Information handled</h2>
+<ul>
+<li><strong>Public vulnerability records:</strong> The app requests CVE identifiers, descriptions, publication dates and severity data from the VulnX API for search, filtering and statistics.</li>
+<li><strong>Browser cache:</strong> The progressive web app can cache its app shell and previously requested public vulnerability responses to support faster loading and limited offline access. This data is stored by the browser on your device and can be removed using browser site-data controls.</li>
+<li><strong>Technical request information:</strong> Hosting, CDN, API or network providers may process IP addresses, request timestamps, browser/device metadata and diagnostic logs to deliver, maintain and protect the service. Exact fields and retention depend on provider configuration and policies and must be confirmed by the operator.</li>
+<li><strong>External resources:</strong> The current stylesheet references Google Fonts. The browser may connect to Google's servers to load fonts and disclose technical connection information to that provider. Self-hosting fonts can reduce this third-party request.</li>
+</ul>
+<h2>2. Purpose and legal basis</h2><p>VulnX uses public vulnerability data to operate its dashboard. Technical processing by providers may be necessary to deliver and secure the service. The operator must assess and document the applicable legal basis, notices and consent requirements for the actual deployment and jurisdictions served. The in-app notice acknowledgement is not consent to optional analytics or advertising.</p>
+<h2>3. Sharing and service providers</h2><p>VulnX does not intentionally sell personal information. Requests are sent to the configured VulnX API, and infrastructure providers may process connection data as part of hosting and security operations. External resources such as the National Vulnerability Database (NVD) apply their own policies. The final release policy must identify actual providers and any additional SDKs or integrations.</p>
+<h2>4. Permissions</h2><p>The current web frontend does not request access to device location, contacts, camera, microphone, SMS or call logs. A future Android package should request only permissions essential to implemented and clearly described features. Audit the final Android manifest and bundled SDKs before completing Play Console declarations.</p>
+<h2>5. Security</h2><p>Use VulnX over HTTPS. The service should apply least-privilege database access, strict CORS allow-lists, input validation, rate limiting where appropriate, safe error responses, dependency updates and monitored security headers. No internet-connected service can guarantee absolute security; security concerns can be reported through the repository contact channel below.</p>
+<h2>6. Retention and deletion</h2><p>The browser cache can be cleared through browser site-data settings. Server-side log retention is controlled by hosting/API providers and must be confirmed by the operator. The current frontend does not create app accounts or maintain user profiles. If account creation or other personal-data storage is added, implement an in-app deletion path, an external deletion request page and a documented retention process before release.</p>
+<h2>7. Children and target audience</h2><p>VulnX is a technical vulnerability-information tool and is not designed specifically for children. The Play Console target-audience declaration must match the intended audience and actual app content. Applicable child-safety and privacy requirements must be reviewed before choosing an age group.</p>
+<h2>8. Changes</h2><p>Update this policy whenever data practices, SDKs, providers or app features change. The date above should reflect the latest substantive review.</p>
+<h2>9. Contact and security reports</h2><p>For privacy questions or security reports, contact the VulnX maintainer through the <a href="https://github.com/Divyatej-2024/vulnx/issues">VulnX GitHub issue page</a>. Do not include passwords, access tokens or other secrets in a report. Configure a monitored privacy/security contact before publishing on Google Play.</p>
+<p class="muted">Working draft based on the current repository. Verify it against the deployed infrastructure and final Android package. This is not legal advice.</p><p><a href="/">Return to VulnX</a></p>
+</main></body></html>
