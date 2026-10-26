@@ -8,11 +8,18 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+# When this file is executed directly, Python puts backend/scripts on sys.path,
+# not backend/. Add the backend root so imports such as app.db resolve reliably.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from app.ingest.nvd_ingest import ingest_nvd_gz
 
