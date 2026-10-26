@@ -139,8 +139,10 @@ function App() {
 
   useEffect(() => { if (!privacyOpen) load(); }, [load, privacyOpen]);
   useEffect(() => {
+    // Do not schedule background API traffic until the privacy notice has been acknowledged.
+    if (privacyOpen) return undefined;
     const refreshWhenVisible = () => {
-      if (!privacyOpen && document.visibilityState === 'visible') load();
+      if (document.visibilityState === 'visible') load();
     };
     const timer = window.setInterval(load, waitingForFeed ? 30 * 1000 : 5 * 60 * 1000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
