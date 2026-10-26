@@ -92,3 +92,14 @@ test('opens and displays vulnerability details when a result is selected', async
   expect(screen.getByText('A sample vulnerability for UI testing.')).toBeInTheDocument();
   expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234');
 });
+
+
+test('shows a clear waiting state when the API has no feed data yet', async () => {
+  axios.get.mockRejectedValue(new Error('API temporarily unavailable'));
+  render(<App />);
+
+  expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
+  expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /check now/i })).toBeInTheDocument();
+  expect(screen.getByText(/The feed will appear here when the API is ready/i)).toBeInTheDocument();
+});
