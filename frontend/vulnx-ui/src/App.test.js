@@ -70,7 +70,7 @@ test('renders the dashboard and vulnerability data returned by the API', async (
   render(<App />);
 
   expect(screen.getByRole('heading', { name: /vulnerability overview/i })).toBeInTheDocument();
-  expect(await screen.findByText('CVE-2025-1234')).toBeInTheDocument();
+  expect(await screen.findByRole('row', { name: /CVE-2025-1234/i })).toBeInTheDocument();
   expect(screen.getByText('Tracked vulnerabilities')).toBeInTheDocument();
   expect(screen.getByText('High severity')).toBeInTheDocument();
 
