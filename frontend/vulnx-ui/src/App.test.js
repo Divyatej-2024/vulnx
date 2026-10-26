@@ -97,9 +97,17 @@ test('opens and displays vulnerability details when a result is selected', async
 });
 
 
+test('does not request dashboard data until consent is acknowledged', async () => {
+  render(<App />);
+  expect(axios.get).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
+  await waitFor(() => expect(axios.get).toHaveBeenCalled());
+});
+
 test('shows a clear waiting state when the API has no feed data yet', async () => {
   axios.get.mockRejectedValue(new Error('API temporarily unavailable'));
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
 
   expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
   expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
@@ -115,6 +123,7 @@ test('shows the waiting state when the API is reachable but the feed is still em
       : { vulns: [], total: 0, limit: 12, offset: 0 },
   }));
   render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
 
   expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
   expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
