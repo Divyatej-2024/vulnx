@@ -9,6 +9,7 @@ const API = (configuredApiUrl || '/api/v1').replace(/\/+$/, '');
 // this value cannot reach the separate FastAPI service from Vercel's static host.
 const API_CONFIG_MISSING = process.env.NODE_ENV === 'production' && !configuredApiUrl;
 const PAGE_SIZE = 12;
+const CACHE_PREFIX = 'vulnx-dashboard-cache-v1:';
 const severityFor = (score) => {
   if (score == null) return 'Unknown';
   if (score >= 9) return 'Critical';
@@ -22,6 +23,7 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [vulns, setVulns] = useState([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [severity, setSeverity] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
@@ -82,6 +84,11 @@ function App() {
     setInstallPrompt(null);
   };
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -94,7 +101,7 @@ function App() {
         return;
       }
       const params = { limit: PAGE_SIZE, offset: page * PAGE_SIZE };
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch) params.search = debouncedSearch;
       if (severity) params.severity = severity.toLowerCase();
       const [list, stats] = await Promise.all([
         axios.get(`${API}/vulns`, { params }), axios.get(`${API}/summary`),
@@ -102,17 +109,38 @@ function App() {
       setVulns(list.data.vulns || []);
       setTotal(list.data.total || 0);
       setSummary(stats.data);
+      try {
+        window.localStorage.setItem(`${CACHE_PREFIX}${API}:${debouncedSearch}:${severity}:${page}`, JSON.stringify({
+          vulns: list.data.vulns || [],
+          total: list.data.total || 0,
+          summary: stats.data,
+          savedAt: Date.now(),
+        }));
+      } catch {}
     } catch (e) {
-      setError(e.response?.data?.detail || 'Could not reach the VulnX API. Start the backend and try again.');
+      let restored = false;
+      try {
+        const cached = window.localStorage.getItem(`${CACHE_PREFIX}${API}:${debouncedSearch}:${severity}:${page}`);
+        if (cached) {
+          const saved = JSON.parse(cached);
+          setVulns(Array.isArray(saved.vulns) ? saved.vulns : []);
+          setTotal(Number(saved.total) || 0);
+          if (saved.summary) setSummary(saved.summary);
+          const savedAt = saved.savedAt ? new Date(saved.savedAt).toLocaleString() : 'an earlier session';
+          setError(`API unavailable — showing saved vulnerability data from ${savedAt}.`);
+          restored = true;
+        }
+      } catch {}
+      if (!restored) setError(e.response?.data?.detail || 'Could not reach the VulnX API. Check the API deployment and try again.');
     } finally {
       setLoading(false);
     }
-  }, [page, search, severity]);
+  }, [page, debouncedSearch, severity]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (!privacyOpen) load(); }, [load, privacyOpen]);
   useEffect(() => {
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') load();
+      if (!privacyOpen && document.visibilityState === 'visible') load();
     };
     const timer = window.setInterval(load, waitingForFeed ? 30 * 1000 : 5 * 60 * 1000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
@@ -120,7 +148,7 @@ function App() {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [load, waitingForFeed]);
+  }, [load, waitingForFeed, privacyOpen]);
   useEffect(() => { setPage(0); }, [search, severity]);
 
   const openDetails = async (cveId) => {
