@@ -32,7 +32,7 @@ function App() {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
   // The import runs server-side; the client never invents a percentage or claims completion.
-  const waitingForFeed = Boolean(error && !summary && vulns.length === 0 && isOnline && !API_CONFIG_MISSING);
+  const waitingForFeed = Boolean(!loading && isOnline && !API_CONFIG_MISSING && vulns.length === 0 && ((!summary && error) || (summary && Number(summary.total || 0) === 0 && !error)));
 
   useEffect(() => {
     const onInstallPrompt = (event) => {
