@@ -31,6 +31,8 @@ function App() {
   const [installHelp, setInstallHelp] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+  // The import runs server-side; the client never invents a percentage or claims completion.
+  const waitingForFeed = Boolean(!loading && isOnline && !API_CONFIG_MISSING && vulns.length === 0 && ((!summary && error) || (summary && Number(summary.total || 0) === 0 && !error)));
 
   useEffect(() => {
     const onInstallPrompt = (event) => {
@@ -98,13 +100,13 @@ function App() {
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') load();
     };
-    const timer = window.setInterval(load, 5 * 60 * 1000);
+    const timer = window.setInterval(load, waitingForFeed ? 30 * 1000 : 5 * 60 * 1000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [load]);
+  }, [load, waitingForFeed]);
   useEffect(() => { setPage(0); }, [search, severity]);
 
   const openDetails = async (cveId) => {
@@ -130,7 +132,9 @@ function App() {
         <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions">{!isInstalled && <button className="install-button" onClick={installApp}>⬇ <span>Install app</span></button>}<button className="refresh-button" onClick={load} disabled={loading}><span className={loading ? 'refresh-spin' : ''}>↻</span> Refresh data</button></div></header>
         <div className="content-wrap">
           {!isOnline && <div className="offline-banner" role="status"><span className="offline-indicator" /> Offline mode · showing saved feed data where available</div>}
-          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className="feed-status"><span className="live-dot" /> {error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
+          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className={`feed-status ${waitingForFeed ? 'feed-status-waiting' : ''}`}><span className={waitingForFeed ? 'wait-dot' : 'live-dot'} /> {waitingForFeed ? 'Feed data pending' : error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
+
+          {waitingForFeed && <section className="import-panel" aria-live="polite"><div className="import-orbit"><span className="import-orbit-core">NVD</span></div><div className="import-copy"><div className="import-kicker"><span className="wait-dot" /> DATA INGESTION</div><h2>Vulnerability data is not available yet</h2><p>The dashboard stays usable while VulnX waits for its data API. It will check again automatically and populate when records become available. This status reflects API availability, not exact NVD import progress.</p><div className="import-progress"><span /></div><div className="import-foot"><span><span className="loader" /> Waiting for the API</span><span>Auto-check every 30 seconds</span></div></div><button className="import-retry" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Check now ↻'}</button></section>}
 
           <section className="stats-grid" aria-label="Vulnerability statistics">
             <Stat label="Tracked vulnerabilities" value={summary?.total} icon="◈" tone="blue" note="Across ingested NVD records" />
@@ -142,9 +146,9 @@ function App() {
           <section className="table-card" id="vulnerability-table">
             <div className="table-heading"><div><h2>Vulnerabilities</h2><p>Prioritized by CVSS severity and publication date.</p></div><div className="record-count">{total.toLocaleString()} records</div></div>
             <div className="filters"><label className="search-box"><span>⌕</span><input aria-label="Search vulnerabilities" placeholder="Search CVE or description..." value={search} onChange={(e) => setSearch(e.target.value)} /><kbd>/</kbd></label><label className="select-wrap"><span className="sr-only">Filter by severity</span><select value={severity} onChange={(e) => setSeverity(e.target.value)}><option value="">All severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Unknown</option></select></label></div>
-            {error && <div className="error-banner" role="alert"><span>!</span>{error}<button onClick={load}>Retry</button></div>}
+            {error && !waitingForFeed && <div className="error-banner" role="alert"><span>!</span>{error}<button onClick={load}>Retry</button></div>}
             <div className="table-scroll"><table><thead><tr><th>VULNERABILITY</th><th>SEVERITY</th><th>CVSS V3</th><th>PUBLISHED</th><th>PRIORITY</th><th /></tr></thead>
-              <tbody>{loading ? <tr><td colSpan="6" className="state-cell"><span className="loader" />Loading vulnerability data…</td></tr> : vulns.length === 0 ? <tr><td colSpan="6" className="state-cell">{error ? 'Data is unavailable.' : 'No vulnerabilities match these filters.'}</td></tr> : vulns.map((v) => <tr key={v.cve_id} onClick={() => openDetails(v.cve_id)} className="data-row"><td><div className="cve-id">{v.cve_id}</div><div className="cve-title">{v.title || 'NVD vulnerability record'}</div></td><td><span className={`severity severity-${severityFor(v.cvss_v3).toLowerCase()}`}><i />{severityFor(v.cvss_v3)}</span></td><td><span className="cvss-value">{v.cvss_v3 == null ? '—' : Number(v.cvss_v3).toFixed(1)}</span><span className="cvss-max"> / 10</span></td><td className="date-cell">{prettyDate(v.published_date)}</td><td><div className="priority"><div className="priority-track"><span style={{ width: `${(v.score || 0) * 100}%` }} /></div><span>{Math.round((v.score || 0) * 100)}</span></div></td><td className="arrow-cell">↗</td></tr>)}</tbody>
+              <tbody>{loading ? <tr><td colSpan="6" className="state-cell"><span className="loader" />Loading vulnerability data…</td></tr> : vulns.length === 0 ? <tr><td colSpan="6" className="state-cell">{waitingForFeed ? 'The feed will appear here when the API is ready.' : error ? 'Data is unavailable.' : 'No vulnerabilities match these filters.'}</td></tr> : vulns.map((v) => <tr key={v.cve_id} onClick={() => openDetails(v.cve_id)} className="data-row"><td><div className="cve-id">{v.cve_id}</div><div className="cve-title">{v.title || 'NVD vulnerability record'}</div></td><td><span className={`severity severity-${severityFor(v.cvss_v3).toLowerCase()}`}><i />{severityFor(v.cvss_v3)}</span></td><td><span className="cvss-value">{v.cvss_v3 == null ? '—' : Number(v.cvss_v3).toFixed(1)}</span><span className="cvss-max"> / 10</span></td><td className="date-cell">{prettyDate(v.published_date)}</td><td><div className="priority"><div className="priority-track"><span style={{ width: `${(v.score || 0) * 100}%` }} /></div><span>{Math.round((v.score || 0) * 100)}</span></div></td><td className="arrow-cell">↗</td></tr>)}</tbody>
             </table></div>
             <div className="pagination"><span>Showing {total ? page * PAGE_SIZE + 1 : 0}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}</span><div><button aria-label="Previous page" disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>←</button><span>Page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span><button aria-label="Next page" disabled={(page + 1) * PAGE_SIZE >= total || loading} onClick={() => setPage((p) => p + 1)}>→</button></div></div>
           </section>
