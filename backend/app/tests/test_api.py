@@ -55,6 +55,14 @@ def client(tmp_path, monkeypatch):
     engine.dispose()
 
 
+def test_security_headers_are_present(client):
+    response = client.get("/api/v1/health")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert response.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
+
+
 def test_health_endpoint(client):
     response = client.get("/api/v1/health")
     assert response.status_code == 200
