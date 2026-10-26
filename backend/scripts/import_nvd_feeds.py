@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from sqlalchemy import Column, DateTime, MetaData, String, Table, func, select, delete
+from sqlalchemy import Column, DateTime, MetaData, String, Table, func, select, delete, text
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
@@ -33,6 +33,39 @@ checkpoints = Table(
     Column("feed_name", String(120), primary_key=True),
     Column("completed_at", DateTime, nullable=False, server_default=func.now()),
 )
+
+
+def verify_writable_database() -> None:
+    """Fail before downloading feeds if DATABASE_URL points at a read-only endpoint."""
+    try:
+        with engine.connect() as connection:
+            if connection.dialect.name == "postgresql":
+                read_only = connection.execute(text("SHOW transaction_read_only")).scalar()
+                in_recovery = connection.execute(text("SELECT pg_is_in_recovery()")).scalar()
+                if str(read_only).lower() == "on" or in_recovery:
+                    raise RuntimeError(
+                        "DATABASE_URL connects to a read-only PostgreSQL endpoint. "
+                        "Update the GitHub Actions DATABASE_URL secret to the Supabase PRIMARY "
+                        "database connection (not a read replica/read-only connection), then rerun."
+                    )
+                has_table = connection.execute(
+                    text("SELECT to_regclass('public.vulnerabilities') IS NOT NULL")
+                ).scalar()
+                if has_table:
+                    can_insert = connection.execute(
+                        text("SELECT has_table_privilege(current_user, 'public.vulnerabilities', 'INSERT')")
+                    ).scalar()
+                    if not can_insert:
+                        raise RuntimeError(
+                            "The DATABASE_URL role lacks INSERT permission on public.vulnerabilities. "
+                            "Use the intended writable database role/connection string in GitHub Actions."
+                        )
+            elif connection.dialect.name == "sqlite":
+                connection.exec_driver_sql("SELECT 1")
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"Unable to verify database write access before NVD import: {exc}") from exc
 
 
 def download_feed(feed_name: str, destination: Path) -> None:
@@ -93,6 +126,9 @@ def main() -> None:
         help="Clear annual-feed checkpoints and start a full import from the earliest year.",
     )
     args = parser.parse_args()
+
+    # Fail early: do not spend time downloading feeds if DATABASE_URL is read-only.
+    verify_writable_database()
 
     # Keep the checkpoint table in the same configured database as the CVE records.
     metadata.create_all(engine, tables=[checkpoints])
