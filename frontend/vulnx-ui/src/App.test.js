@@ -103,3 +103,16 @@ test('shows a clear waiting state when the API has no feed data yet', async () =
   expect(screen.getByRole('button', { name: /check now/i })).toBeInTheDocument();
   expect(screen.getByText(/The feed will appear here when the API is ready/i)).toBeInTheDocument();
 });
+
+
+test('shows the waiting state when the API is reachable but the feed is still empty', async () => {
+  axios.get.mockImplementation((url) => Promise.resolve({
+    data: url.endsWith('/summary')
+      ? { total: 0, critical: 0, high: 0, latest_published: null }
+      : { vulns: [], total: 0, limit: 12, offset: 0 },
+  }));
+  render(<App />);
+
+  expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
+  expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
+});
