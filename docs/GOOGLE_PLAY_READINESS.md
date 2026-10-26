@@ -3,37 +3,37 @@
 Status: preparation checklist, not a statement of Play approval or a completed security audit. Reviewed against repository structure on 26 October 2026.
 
 ## Architecture observed
-- React 19 / Create React App frontend at frontend/vulnx-ui.
-- FastAPI backend with /api/v1 routes.
-- PWA manifest and service worker exist.
-- Frontend requests public CVE data and caches app/feed data for offline use.
-- No account registration, advertising SDK or analytics SDK was identified in the frontend package manifest reviewed. Recheck the full production bundle, backend and hosting before submission.
+- React 19 / Create React App frontend at `frontend/vulnx-ui`.
+- FastAPI backend with `/api/v1` routes.
+- PWA manifest and service worker exist for the web app.
+- A separate native Android app lives in `mobile/` and uses Expo / React Native; it is not a web wrapper.
+- The mobile app requests public CVE data from a configured API, caches public records and settings locally, and displays a privacy acknowledgement.
+- No mobile account-registration, advertising or intentional analytics feature is described in the current app. Recheck the final AAB, dependency tree, backend and hosting integrations before submission.
 
-## Android route
-Evaluate a Trusted Web Activity (TWA) first because VulnX is already a web app. Do not publish a thin wrapper until it provides a reliable and useful experience and meets Play quality requirements.
+## Native Android release sequence
 
-1. Confirm the canonical production domain and HTTPS for all app routes.
-2. Run a PWA/Lighthouse audit; verify manifest, icons, start URL, responsive layout, offline/error states and accessibility.
-3. Select a stable Android application ID before generating the project.
-4. Generate a TWA using Bubblewrap or PWA Builder and inspect the Android manifest and dependencies.
-5. Publish Digital Asset Links at /.well-known/assetlinks.json for the exact domain, package name and SHA-256 signing-certificate fingerprint.
-6. Verify that the fingerprint matches the Play-distributed app signing certificate, not only a local upload key.
-7. Build a signed Android App Bundle (AAB), test physical devices/emulators and use Play internal testing before production.
-8. Recheck current target API requirements at submission. As of 31 August 2026, official Android guidance says new apps and updates must target Android 16 / API 36 or higher, subject to form-factor exceptions.
-9. Avoid native permissions unless an actual native feature needs them.
+1. **Confirm the public privacy policy.** Open `https://vulnx-six.vercel.app/privacy.html` in a normal browser and verify it loads over HTTPS, is publicly accessible without sign-in or geographic restrictions, and accurately describes the final app and infrastructure. The source file is present in this repository, but a successful Vercel deployment alone does not prove that the live page is correct.
+2. **Confirm the app identity.** Current Android application ID: `com.vulnx.mobile`. Treat it as permanent before the first Play upload; changing it later creates a different Play app.
+3. **Confirm the API endpoint.** Set `EXPO_PUBLIC_API_URL` to the deployed API base ending in `/api/v1` in the EAS production environment, or verify that the app's connection setup provides an appropriate HTTPS endpoint. This value is public app configuration, not a secret. Do not put credentials or private keys in `EXPO_PUBLIC_*` variables.
+4. **Inspect the generated Android manifest.** From `mobile/`, install the locked dependencies with `npm ci`, then run `npx expo prebuild --platform android` and inspect `android/app/src/main/AndroidManifest.xml`. Check the final merged manifest and dependency-added permissions; configuration exclusions alone do not prove the final package has no extra permissions. The current config explicitly requests internet access and blocks several unrelated sensitive permissions.
+5. **Run release QA.** Run `npx expo config --type public` and `npx expo export --platform android`. Then run the EAS preview build and install it on a physical Android device. Test first launch/privacy acknowledgement, policy link, API connection, search, severity filtering, CVE details, pagination, refresh, offline cache, invalid server URL and recovery from API failure.
+6. **Build the store artifact.** Sign in to the Expo account associated with the configured EAS project, then from `mobile/` run `npm run build:android:production`. The expected store artifact is a signed Android App Bundle (AAB), not the preview APK. Verify the build completes and download the AAB from the EAS build page. Never commit or share signing credentials, access tokens or keystore files.
+7. **Review supply-chain licensing and security.** Audit direct and transitive npm/Android dependencies, fonts, icons and other assets. The root project has an MIT licence, but that does not change third-party licences. Generate an SBOM and review actionable dependency findings before submission.
+8. **Use Play internal testing first.** Upload the AAB to an internal-testing track, install it through the Play testing flow, and verify the installed package, signing, supported Android versions, crash/error behaviour and privacy links before considering production release.
+9. **Check current Play requirements again at submission.** As of 31 August 2026, official Android guidance says new apps and updates must target Android 16 / API 36 or higher, subject to form-factor exceptions. The current config targets API 36; confirm that requirement has not changed before submitting.
 
-Official guide: https://developer.android.com/develop/ui/views/layout/webapps/guide-trusted-web-activities-version2
+Expo build documentation: https://docs.expo.dev/build/setup/
+Android app bundle guidance: https://developer.android.com/guide/app-bundle
+Google Play policy centre: https://support.google.com/googleplay/android-developer/answer/10144311
 
 ## Privacy and consent
-- Publish public/privacy.html at a stable, public, non-geo-fenced HTTPS URL and enter the exact URL in Play Console.
-- The in-app notice is acknowledgement of current privacy information, not consent to optional tracking.
-- Verify what the actual hosting, CDN, API, database, error-monitoring tools and all third-party resources collect and retain. Update the policy to identify real providers, purposes, retention, sharing and contact details.
-- Consider self-hosting Google Fonts.
+- Enter the exact public HTTPS privacy-policy URL in Play Console only after checking the live page and matching it to actual production behaviour.
+- The in-app notice is an acknowledgement of current privacy information, not consent to optional tracking.
+- Verify what Vercel, Supabase, the API runtime, monitoring integrations and all third-party resources actually collect and retain. Exact log fields and retention periods cannot be inferred from repository source alone.
+- Consider self-hosting Google Fonts to reduce third-party browser requests.
 - Complete Play Console Data safety based on the final AAB, backend, hosting and every SDK; do not guess.
-- The current frontend has no account feature. If accounts are introduced, implement in-app account deletion and an external deletion-request URL, and actually delete associated data or document a lawful retention exception.
-- Configure a monitored privacy/security contact before publishing; repository issues are a temporary public contact route.
-
-Official policy: https://support.google.com/googleplay/android-developer/answer/10144311
+- The current app has no account feature. If accounts are introduced later, implement account deletion and update the privacy policy before release.
+- Configure a monitored privacy contact and a private security-reporting channel before publishing. Public repository issues should not be used for sensitive reports.
 
 ## Security controls to implement and verify
 
@@ -42,7 +42,7 @@ Official policy: https://support.google.com/googleplay/android-developer/answer/
 - Add host-level headers where supported: Content-Security-Policy (begin report-only), Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy and restrictive Permissions-Policy.
 - Test CSP against React assets, API requests and Google Fonts before enforcement; avoid unsafe-inline/eval unless required and justified.
 - Keep service-worker cache limited to static assets and public CVE data. Never cache future authentication tokens or sensitive account responses.
-- For external links opening new tabs, use rel="noopener noreferrer".
+- For external links opening new tabs, use `rel="noopener noreferrer"`.
 
 ### API and data
 - Keep CORS restricted to exact production origins; do not combine wildcard origins with credentials.
@@ -63,19 +63,21 @@ Official policy: https://support.google.com/googleplay/android-developer/answer/
 - [ ] Developer account and verified contact details.
 - [ ] Stable package/application ID.
 - [ ] App name, description, screenshots, icon, feature graphic and support contact.
-- [ ] Public privacy policy URL matches actual practices.
-- [ ] Data safety form completed for the exact build and all SDKs.
+- [ ] Public privacy policy URL verified live and matching actual practices.
+- [ ] Data safety form completed for the exact AAB and all SDKs.
 - [ ] App content declarations: ads, target audience, content rating, app access and relevant policy declarations.
-- [ ] Permissions reviewed against final Android manifest; remove unused permissions.
+- [ ] Permissions reviewed against the final merged Android manifest.
 - [ ] Target API confirmed against current Play rules.
 - [ ] AAB signing and Play App Signing verified.
-- [ ] Native Android package verified; no TWA Digital Asset Links are needed unless Android App Links are deliberately configured.
 - [ ] Internal testing across supported Android versions and screen sizes.
-- [ ] Offline/error states, accessibility, privacy notice and links tested.
-- [ ] MIT project licence reviewed and committed.
-- [ ] Third-party dependency and asset licence audit completed; required notices included.
+- [ ] Offline/error states, accessibility, privacy acknowledgement and links tested.
+- [ ] Root MIT licence retained; third-party dependency and asset licence audit completed.
 - [ ] Privacy/security contact monitored.
 - [ ] Store listing claims only features actually implemented.
 
-## Licence decision
-No root project LICENSE file was present in the root directory listing reviewed. Do not assume VulnX source code is MIT or Apache licensed. Choose and add a project licence only after deciding how others may use, modify and redistribute your code. Audit third-party dependency licences independently; a project licence does not replace Play policy compliance or legal review.
+## Known release blockers as of this review
+- Live privacy-policy rendering has not been independently verified by the web-checking tool; manually confirm it in a browser.
+- The final merged Android manifest has not yet been inspected.
+- A signed production AAB and physical-device test have not yet been verified.
+- Provider logging, retention, backups, monitoring and the full dependency licence inventory require operator-side confirmation.
+- Play Console declarations and internal testing remain to be completed.
