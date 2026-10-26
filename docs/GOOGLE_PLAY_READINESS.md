@@ -69,10 +69,11 @@ Official policy: https://support.google.com/googleplay/android-developer/answer/
 - [ ] Permissions reviewed against final Android manifest; remove unused permissions.
 - [ ] Target API confirmed against current Play rules.
 - [ ] AAB signing and Play App Signing verified.
-- [ ] TWA Digital Asset Links verified against Play app-signing certificate.
+- [ ] Native Android package verified; no TWA Digital Asset Links are needed unless Android App Links are deliberately configured.
 - [ ] Internal testing across supported Android versions and screen sizes.
 - [ ] Offline/error states, accessibility, privacy notice and links tested.
-- [ ] Third-party licence notices included where required.
+- [ ] MIT project licence reviewed and committed.
+- [ ] Third-party dependency and asset licence audit completed; required notices included.
 - [ ] Privacy/security contact monitored.
 - [ ] Store listing claims only features actually implemented.
 
