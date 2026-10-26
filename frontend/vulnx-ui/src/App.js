@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
+import PrivacyNotice from './PrivacyNotice';
 
 const configuredApiUrl = process.env.REACT_APP_API_URL?.trim();
 const API = (configuredApiUrl || '/api/v1').replace(/\/+$/, '');
@@ -29,6 +30,19 @@ function App() {
   const [selected, setSelected] = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installHelp, setInstallHelp] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(() => {
+    try { return window.localStorage.getItem('vulnx-privacy-ack-v1') !== 'accepted'; }
+    catch { return true; }
+  });
+  const [privacyFirstVisit, setPrivacyFirstVisit] = useState(() => {
+    try { return window.localStorage.getItem('vulnx-privacy-ack-v1') !== 'accepted'; }
+    catch { return true; }
+  });
+  const acknowledgePrivacy = () => {
+    try { window.localStorage.setItem('vulnx-privacy-ack-v1', 'accepted'); } catch {}
+    setPrivacyFirstVisit(false);
+    setPrivacyOpen(false);
+  };
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
   // The import runs server-side; the client never invents a percentage or claims completion.
@@ -125,6 +139,7 @@ function App() {
         <div className="side-caption">WORKSPACE</div>
         <button className="nav-item active"><span className="nav-icon">◫</span> Overview</button>
         <button className="nav-item" onClick={() => document.getElementById('vulnerability-table')?.scrollIntoView({ behavior: 'smooth' })}><span className="nav-icon">⌕</span> Vulnerabilities</button>
+        <button className="nav-item" onClick={() => { setPrivacyFirstVisit(false); setPrivacyOpen(true); }}><span className="nav-icon">◇</span> Privacy &amp; security</button>
         <div className="sidebar-bottom"><div className="live-dot" /> NVD feed monitor <span className="online">LIVE</span></div>
       </aside>
 
@@ -158,6 +173,11 @@ function App() {
 
       {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close details" onClick={() => setSelected(null)}>×</button><div className="eyebrow">VULNERABILITY DETAILS</div><h2 id="detail-title">{selected.cve_id}</h2><div className="detail-meta"><span className={`severity severity-${severityFor(selected.cvss_v3).toLowerCase()}`}><i />{severityFor(selected.cvss_v3)}</span><span>CVSS v3 <strong>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</strong></span><span>Published <strong>{prettyDate(selected.published_date)}</strong></span></div><h3>Description</h3><p className="detail-description">{selected.description}</p><a className="nvd-link" href={`https://nvd.nist.gov/vuln/detail/${selected.cve_id}`} target="_blank" rel="noreferrer">View official NVD record <span>↗</span></a></section></div>}
       {installHelp && <div className="modal-backdrop" role="presentation" onClick={() => setInstallHelp(false)}><section className="detail-modal install-guide" role="dialog" aria-modal="true" aria-labelledby="install-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close install instructions" onClick={() => setInstallHelp(false)}>×</button><div className="eyebrow">VULNX FOR MOBILE</div><h2 id="install-title">Add VulnX to your home screen</h2><p className="detail-description">Open your browser menu or Share menu, then choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. VulnX will open in its own window and keep the latest feed data available when you are offline.</p><button className="refresh-button" onClick={() => setInstallHelp(false)}>Got it</button></section></div>}
+      {privacyOpen && <PrivacyNotice
+        firstVisit={privacyFirstVisit}
+        onAcknowledge={acknowledgePrivacy}
+        onClose={() => setPrivacyOpen(false)}
+      />}
     </div>
   );
 }
