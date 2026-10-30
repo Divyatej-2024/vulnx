@@ -4,7 +4,7 @@ VulnX is a vulnerability intelligence dashboard backed by NVD CVE feeds. The rep
 
 ## Run locally
 
-Requirements: Python 3.10+ and Node.js 18+.
+Requirements: Python 3.12 and Node.js 18+.
 
 1. Start the API:
 
