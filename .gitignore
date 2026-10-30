@@ -16,3 +16,7 @@ mobile/dist/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local SQLite database files
+backend/app/dev.db
+backend/app/dev.db-*
