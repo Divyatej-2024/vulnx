@@ -123,15 +123,14 @@ test('does not request dashboard data until consent is acknowledged', async () =
   await waitFor(() => expect(axios.get).toHaveBeenCalled());
 });
 
-test('shows a clear waiting state when the API has no feed data yet', async () => {
+test('shows an API error rather than mislabelling an unreachable API as a pending feed', async () => {
   axios.get.mockRejectedValue(new Error('API temporarily unavailable'));
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
 
-  expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
-  expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /check now/i })).toBeInTheDocument();
-  expect(screen.getByText(/The feed will appear here when the API is ready/i)).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent(/Could not reach the VulnX API/);
+  expect(screen.getByText('API unavailable')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: /vulnerability data is not available yet/i })).not.toBeInTheDocument();
 });
 
 
