@@ -125,9 +125,10 @@ def _upsert(session, model, rows: list[dict], conflict_columns: list, update_col
         return
     dialect = session.get_bind().dialect.name
     if dialect not in {"postgresql", "sqlite"}:
-        for row in rows:
-            session.merge(model(**row))
-        return
+        raise RuntimeError(
+            f"Unsupported database dialect for threat-intelligence upsert: {dialect}. "
+            "Use PostgreSQL or SQLite."
+        )
     insert = pg_insert if dialect == "postgresql" else sqlite_insert
     statement = insert(model).values(rows)
     statement = statement.on_conflict_do_update(
