@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.intel.sync import parse_epss_gzip, parse_kev, sync_intelligence
+from app.intel.sync import parse_epss_feed, parse_epss_gzip, parse_kev, sync_intelligence
 from app.models import Base, ThreatIntelligence, Vulnerability
 
 
@@ -74,4 +74,53 @@ def test_sync_only_persists_vulnx_cves_and_is_repeatable(tmp_path):
         unmatched = session.query(ThreatIntelligence).filter_by(cve_id="CVE-2025-9999").one()
         assert unmatched.epss_probability is None
         assert unmatched.is_kev is False
+    engine.dispose()
+
+
+
+def test_parse_epss_feed_reads_first_metadata_and_scores():
+    content = (
+        "#model_version:v2026.01,score_date:2026-11-01\n"
+        "cve,epss,percentile\n"
+        "CVE-2026-1000,0.625,0.975\n"
+    )
+    feed = parse_epss_feed(gzip.compress(content.encode()))
+    assert feed.score_date.isoformat() == "2026-11-01"
+    assert feed.model_version == "v2026.01"
+    assert feed.scores == {"CVE-2026-1000": (0.625, 0.975)}
+
+
+def test_sync_persists_daily_epss_history_and_provenance(tmp_path):
+    from app.models import EPSSHistory
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'epss-history.db'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    with factory() as session:
+        session.add(Vulnerability(cve_id="CVE-2026-1000"))
+        session.commit()
+
+    kev_payload = json.dumps({"vulnerabilities": []}).encode()
+    epss_payload = gzip.compress(
+        b"#model_version:v2026.01,score_date:2026-11-01\n"
+        b"cve,epss,percentile\nCVE-2026-1000,0.625,0.975\n"
+    )
+    payloads = {
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json": kev_payload,
+        "https://epss.empiricalsecurity.com/epss_scores-current.csv.gz": epss_payload,
+    }
+    result = sync_intelligence(factory, downloader=lambda url: payloads[url])
+    assert result["epss_history_snapshots"] == 1
+    assert result["epss_score_date"] == "2026-11-01"
+    with factory() as session:
+        current = session.query(ThreatIntelligence).one()
+        assert current.epss_score_date.isoformat() == "2026-11-01"
+        assert current.epss_model_version == "v2026.01"
+        history = session.query(EPSSHistory).one()
+        assert history.epss_probability == 0.625
+        assert history.model_version == "v2026.01"
+    # Re-running the same daily feed updates that date rather than duplicating it.
+    sync_intelligence(factory, downloader=lambda url: payloads[url])
+    with factory() as session:
+        assert session.query(EPSSHistory).count() == 1
     engine.dispose()

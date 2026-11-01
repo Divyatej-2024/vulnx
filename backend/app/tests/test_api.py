@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import main
 from app.api import v1 as api_v1
-from app.models import Base, ThreatIntelligence, Vulnerability
+from app.models import Base, EPSSHistory, ThreatIntelligence, Vulnerability
 
 
 @pytest.fixture
@@ -54,6 +54,22 @@ def client(tmp_path, monkeypatch):
             kev_due_date=date(2025, 2, 10),
             kev_required_action="Apply the vendor security update.",
         ))
+        session.add_all([
+            EPSSHistory(
+                cve_id="CVE-2025-0001",
+                score_date=date.today() - timedelta(days=1),
+                epss_probability=0.6,
+                epss_percentile=0.95,
+                model_version="v2026.01",
+            ),
+            EPSSHistory(
+                cve_id="CVE-2025-0001",
+                score_date=date.today(),
+                epss_probability=0.8,
+                epss_percentile=0.99,
+                model_version="v2026.01",
+            ),
+        ])
         session.commit()
 
     monkeypatch.setattr(api_v1, "SessionLocal", TestSessionLocal)
@@ -160,3 +176,26 @@ def test_detail_returns_source_and_missing_record_is_404(client):
 def test_invalid_query_parameters_return_422(client, params):
     response = client.get("/api/v1/vulns", params=params)
     assert response.status_code == 422
+
+
+
+def test_epss_history_returns_recent_daily_points_and_model_note(client):
+    response = client.get("/api/v1/vulns/CVE-2025-0001/epss-history")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["window_days"] == 90
+    assert data["available_points"] == 2
+    assert data["history"][-1]["epss_probability"] == 0.8
+    assert data["history"][-1]["change_from_previous"] == pytest.approx(0.2)
+    assert data["history"][-1]["model_version"] == "v2026.01"
+    assert "not evidence" in data["note"]
+
+
+def test_epss_history_rejects_windows_over_90_days(client):
+    response = client.get("/api/v1/vulns/CVE-2025-0001/epss-history?days=91")
+    assert response.status_code == 422
+
+
+def test_epss_history_returns_404_for_unknown_cve(client):
+    response = client.get("/api/v1/vulns/CVE-2099-9999/epss-history")
+    assert response.status_code == 404

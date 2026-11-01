@@ -2,7 +2,7 @@ name: VulnX threat intelligence sync
 
 on:
   schedule:
-    - cron: "17 7 * * *"
+    - cron: "17 14 * * *"
   workflow_dispatch:
 
 permissions:

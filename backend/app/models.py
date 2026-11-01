@@ -26,6 +26,8 @@ class ThreatIntelligence(Base):
     cve_id = Column(String, primary_key=True, index=True)
     epss_probability = Column(Float, nullable=True)
     epss_percentile = Column(Float, nullable=True)
+    epss_score_date = Column(Date, nullable=True)
+    epss_model_version = Column(String(40), nullable=True)
     is_kev = Column(Boolean, nullable=False, default=False, index=True)
     kev_date_added = Column(Date, nullable=True)
     kev_due_date = Column(Date, nullable=True)
@@ -33,3 +35,17 @@ class ThreatIntelligence(Base):
     kev_vendor_project = Column(String, nullable=True)
     kev_product = Column(String, nullable=True)
     synced_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+
+class EPSSHistory(Base):
+    """Daily EPSS snapshots retained for trend analysis."""
+    __tablename__ = "epss_history"
+    __table_args__ = (UniqueConstraint("cve_id", "score_date", name="uq_epss_history_cve_score_date"),)
+
+    id = Column(Integer, primary_key=True)
+    cve_id = Column(String, nullable=False, index=True)
+    score_date = Column(Date, nullable=False, index=True)
+    epss_probability = Column(Float, nullable=False)
+    epss_percentile = Column(Float, nullable=False)
+    model_version = Column(String(40), nullable=True)
+    recorded_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
