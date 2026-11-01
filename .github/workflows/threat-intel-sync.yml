@@ -2,7 +2,8 @@ name: VulnX threat intelligence sync
 
 on:
   schedule:
-    - cron: "17 14 * * *"
+    # KEV is checked regularly; EPSS itself is published daily by FIRST.
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:

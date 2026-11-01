@@ -29,6 +29,7 @@ function App() {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [lastCheckedAt, setLastCheckedAt] = useState(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
   const loadRequestId = useRef(0);
@@ -116,6 +117,7 @@ function App() {
       setVulns(list.data.vulns || []);
       setTotal(list.data.total || 0);
       setSummary(stats.data);
+      setLastCheckedAt(new Date());
       try {
         window.localStorage.setItem(`${CACHE_PREFIX}${API}:${debouncedSearch}:${severity}:${page}`, JSON.stringify({
           vulns: list.data.vulns || [],
@@ -152,7 +154,7 @@ function App() {
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') load();
     };
-    const timer = window.setInterval(load, waitingForFeed ? 30 * 1000 : 5 * 60 * 1000);
+    const timer = window.setInterval(load, waitingForFeed ? 30 * 1000 : 60 * 1000);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       window.clearInterval(timer);
@@ -200,14 +202,14 @@ function App() {
         <button className="nav-item active"><span className="nav-icon">◫</span> Overview</button>
         <button className="nav-item" onClick={() => document.getElementById('vulnerability-table')?.scrollIntoView({ behavior: 'smooth' })}><span className="nav-icon">⌕</span> Vulnerabilities</button>
         <button className="nav-item" onClick={() => { setPrivacyFirstVisit(false); setPrivacyOpen(true); }}><span className="nav-icon">◇</span> Privacy &amp; security</button>
-        <div className="sidebar-bottom"><div className="live-dot" /> NVD feed monitor <span className="online">LIVE</span></div>
+        <div className="sidebar-bottom"><div className="live-dot" /> NVD feed monitor <span className="online">AUTO</span></div>
       </aside>
 
       <main className="main-content">
         <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div className="topbar-actions">{!isInstalled && <button className="install-button" onClick={installApp}>⬇ <span>Install app</span></button>}<button className="refresh-button" onClick={load} disabled={loading}><span className={loading ? 'refresh-spin' : ''}>↻</span> Refresh data</button></div></header>
         <div className="content-wrap">
           {!isOnline && <div className="offline-banner" role="status"><span className="offline-indicator" /> Offline mode · showing saved feed data where available</div>}
-          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className={`feed-status ${waitingForFeed ? 'feed-status-waiting' : ''}`}><span className={waitingForFeed ? 'wait-dot' : 'live-dot'} /> {waitingForFeed ? 'Feed data pending' : error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
+          <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p><p>Last checked {lastCheckedAt ? lastCheckedAt.toLocaleTimeString() : "not yet"} · Automatic refresh every 60 seconds.</p></div><div className={`feed-status ${waitingForFeed ? 'feed-status-waiting' : ''}`}><span className={waitingForFeed ? 'wait-dot' : 'live-dot'} /> {waitingForFeed ? 'Feed data pending' : error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
           <IntelligenceGuide />
 
           {waitingForFeed && <section className="import-panel" aria-live="polite"><div className="import-orbit"><span className="import-orbit-core">NVD</span></div><div className="import-copy"><div className="import-kicker"><span className="wait-dot" /> DATA INGESTION</div><h2>Vulnerability data is not available yet</h2><p>The dashboard stays usable while VulnX waits for its data API. It will check again automatically and populate when records become available. This status reflects API availability, not exact NVD import progress.</p><div className="import-progress"><span /></div><div className="import-foot"><span><span className="loader" /> Waiting for the API</span><span>Auto-check every 30 seconds</span></div></div><button className="import-retry" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Check now ↻'}</button></section>}
