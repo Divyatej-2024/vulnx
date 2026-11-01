@@ -70,7 +70,10 @@ def parse_epss_gzip(payload: bytes) -> dict[str, tuple[float, float]]:
         decoded = gzip.decompress(payload).decode("utf-8-sig")
     except (OSError, UnicodeDecodeError) as exc:
         raise ValueError("FIRST EPSS response is not a valid gzip CSV") from exc
-    reader = csv.DictReader(io.StringIO(decoded))
+    # EPSS v2+ daily exports begin with a #model_version metadata line.
+    # Ignore comment/blank lines so DictReader sees the actual cve,epss,percentile header.
+    csv_lines = [line for line in decoded.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    reader = csv.DictReader(csv_lines)
     if not reader.fieldnames or not {"cve", "epss", "percentile"}.issubset(reader.fieldnames):
         raise ValueError("FIRST EPSS CSV is missing required columns")
     result = {}
