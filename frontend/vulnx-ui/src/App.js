@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 import PrivacyNotice from './PrivacyNotice';
@@ -31,6 +31,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
+  const loadRequestId = useRef(0);
+  const detailRequestId = useRef(0);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installHelp, setInstallHelp] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(() => {
@@ -49,7 +51,9 @@ function App() {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isInstalled, setIsInstalled] = useState(() => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
   // The import runs server-side; the client never invents a percentage or claims completion.
-  const waitingForFeed = Boolean(!loading && isOnline && !API_CONFIG_MISSING && vulns.length === 0 && ((!summary && error) || (summary && Number(summary.total || 0) === 0 && !error)));
+  // Only show the ingestion-waiting state after a successful API response confirms an empty dataset.
+  // Network/configuration errors must remain visible as API errors, not be mislabelled as feed delays.
+  const waitingForFeed = Boolean(!loading && isOnline && !API_CONFIG_MISSING && summary && Number(summary.total || 0) === 0 && !error);
 
   useEffect(() => {
     const onInstallPrompt = (event) => {
@@ -91,6 +95,7 @@ function App() {
   }, [search]);
 
   const load = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
     setLoading(true);
     setError('');
     try {
@@ -107,6 +112,7 @@ function App() {
       const [list, stats] = await Promise.all([
         axios.get(`${API}/vulns`, { params }), axios.get(`${API}/summary`),
       ]);
+      if (requestId !== loadRequestId.current) return;
       setVulns(list.data.vulns || []);
       setTotal(list.data.total || 0);
       setSummary(stats.data);
@@ -119,6 +125,7 @@ function App() {
         }));
       } catch {}
     } catch (e) {
+      if (requestId !== loadRequestId.current) return;
       let restored = false;
       try {
         const cached = window.localStorage.getItem(`${CACHE_PREFIX}${API}:${debouncedSearch}:${severity}:${page}`);
@@ -134,7 +141,7 @@ function App() {
       } catch {}
       if (!restored) setError(e.response?.data?.detail || 'Could not reach the VulnX API. Check the API deployment and try again.');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestId.current) setLoading(false);
     }
   }, [page, debouncedSearch, severity]);
 
@@ -155,8 +162,10 @@ function App() {
   useEffect(() => { setPage(0); }, [search, severity]);
 
   const openDetails = async (cveId) => {
+    const requestId = ++detailRequestId.current;
     try {
       const response = await axios.get(`${API}/vulns/${cveId}`);
+      if (requestId !== detailRequestId.current) return;
       // Historical enrichment is optional: a missing/unmigrated history table
       // must not prevent users from opening the core vulnerability record.
       let epssHistory = null;
@@ -168,10 +177,19 @@ function App() {
       } catch {
         epssHistory = null;
       }
-      setSelected({ ...response.data, epss_history: epssHistory });
-    } catch (e) {
-      setError('Could not load vulnerability details. Please try again.');
+      if (requestId === detailRequestId.current) {
+        setSelected({ ...response.data, epss_history: epssHistory });
+      }
+    } catch {
+      if (requestId === detailRequestId.current) {
+        setError('Could not load vulnerability details. Please try again.');
+      }
     }
+  };
+
+  const closeDetails = () => {
+    detailRequestId.current += 1;
+    setSelected(null);
   };
 
   return (
@@ -262,7 +280,7 @@ function App() {
         </div>
       </main>
 
-      {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close details" onClick={() => setSelected(null)}>×</button><div className="eyebrow">VULNERABILITY DETAILS</div><h2 id="detail-title">{selected.cve_id}</h2><div className="detail-meta"><span className={`severity severity-${severityFor(selected.cvss_v3).toLowerCase()}`}><i />{severityFor(selected.cvss_v3)}</span><span>CVSS v3 <strong>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</strong></span><span>Published <strong>{prettyDate(selected.published_date)}</strong></span></div><h3>Exploitation intelligence</h3><div className="detail-intel"><span>{selected.is_kev ? 'Listed in CISA Known Exploited Vulnerabilities' : 'No CISA KEV match in the latest sync'}</span><span>EPSS probability: <strong>{selected.epss_probability == null ? 'Unavailable' : (Number(selected.epss_probability) * 100).toFixed(2) + '%'}</strong></span><span>EPSS percentile: <strong>{selected.epss_percentile == null ? 'Unavailable' : (Number(selected.epss_percentile) * 100).toFixed(1) + '%'}</strong></span><span>VulnX priority score: <strong>{selected.priority_score == null ? 'Unavailable' : selected.priority_score + ' / 100'}</strong></span>{selected.kev_required_action && <span>CISA action: {selected.kev_required_action}</span>}{selected.epss_score_date && <span>EPSS score date: <strong>{prettyDate(selected.epss_score_date)}</strong></span>}{selected.epss_model_version && <span>EPSS model: <strong>{selected.epss_model_version}</strong></span>}{selected.kev_due_date && <span>CISA due date: {prettyDate(selected.kev_due_date)}</span>}</div><h3>EPSS trend · up to 90 days</h3><div className="detail-intel">{selected.epss_history?.history?.length ? selected.epss_history.history.map((point) => <span key={point.score_date}>{prettyDate(point.score_date)} · <strong>{(Number(point.epss_probability) * 100).toFixed(2)}%</strong> estimated likelihood · percentile {(Number(point.epss_percentile) * 100).toFixed(1)}%{point.change_from_previous == null ? "" : ` · change ${point.change_from_previous >= 0 ? "+" : ""}${(point.change_from_previous * 100).toFixed(2)} percentage points`}</span>) : <span>No historical daily snapshots are available yet. History accumulates from successful daily syncs; VulnX does not invent earlier scores.</span>}<small>{selected.epss_history?.note || "EPSS estimates exploitation likelihood over the next 30 days, not impact or proof of an attack."}</small></div><h3>Description</h3><p className="detail-description">{selected.description}</p><a className="nvd-link" href={`https://nvd.nist.gov/vuln/detail/${selected.cve_id}`} target="_blank" rel="noreferrer">View official NVD record <span>↗</span></a></section></div>}
+      {selected && <div className="modal-backdrop" role="presentation" onClick={closeDetails}><section className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close details" onClick={() => setSelected(null)}>×</button><div className="eyebrow">VULNERABILITY DETAILS</div><h2 id="detail-title">{selected.cve_id}</h2><div className="detail-meta"><span className={`severity severity-${severityFor(selected.cvss_v3).toLowerCase()}`}><i />{severityFor(selected.cvss_v3)}</span><span>CVSS v3 <strong>{selected.cvss_v3 == null ? 'N/A' : Number(selected.cvss_v3).toFixed(1)}</strong></span><span>Published <strong>{prettyDate(selected.published_date)}</strong></span></div><h3>Exploitation intelligence</h3><div className="detail-intel"><span>{selected.is_kev ? 'Listed in CISA Known Exploited Vulnerabilities' : 'No CISA KEV match in the latest sync'}</span><span>EPSS probability: <strong>{selected.epss_probability == null ? 'Unavailable' : (Number(selected.epss_probability) * 100).toFixed(2) + '%'}</strong></span><span>EPSS percentile: <strong>{selected.epss_percentile == null ? 'Unavailable' : (Number(selected.epss_percentile) * 100).toFixed(1) + '%'}</strong></span><span>VulnX priority score: <strong>{selected.priority_score == null ? 'Unavailable' : selected.priority_score + ' / 100'}</strong></span>{selected.kev_required_action && <span>CISA action: {selected.kev_required_action}</span>}{selected.epss_score_date && <span>EPSS score date: <strong>{prettyDate(selected.epss_score_date)}</strong></span>}{selected.epss_model_version && <span>EPSS model: <strong>{selected.epss_model_version}</strong></span>}{selected.kev_due_date && <span>CISA due date: {prettyDate(selected.kev_due_date)}</span>}</div><h3>EPSS trend · up to 90 days</h3><div className="detail-intel">{selected.epss_history?.history?.length ? selected.epss_history.history.map((point) => <span key={point.score_date}>{prettyDate(point.score_date)} · <strong>{(Number(point.epss_probability) * 100).toFixed(2)}%</strong> estimated likelihood · percentile {(Number(point.epss_percentile) * 100).toFixed(1)}%{point.change_from_previous == null ? "" : ` · change ${point.change_from_previous >= 0 ? "+" : ""}${(point.change_from_previous * 100).toFixed(2)} percentage points`}</span>) : <span>No historical daily snapshots are available yet. History accumulates from successful daily syncs; VulnX does not invent earlier scores.</span>}<small>{selected.epss_history?.note || "EPSS estimates exploitation likelihood over the next 30 days, not impact or proof of an attack."}</small></div><h3>Description</h3><p className="detail-description">{selected.description}</p><a className="nvd-link" href={`https://nvd.nist.gov/vuln/detail/${selected.cve_id}`} target="_blank" rel="noreferrer">View official NVD record <span>↗</span></a></section></div>}
       {installHelp && <div className="modal-backdrop" role="presentation" onClick={() => setInstallHelp(false)}><section className="detail-modal install-guide" role="dialog" aria-modal="true" aria-labelledby="install-title" onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="Close install instructions" onClick={() => setInstallHelp(false)}>×</button><div className="eyebrow">VULNX FOR MOBILE</div><h2 id="install-title">Add VulnX to your home screen</h2><p className="detail-description">Open your browser menu or Share menu, then choose <strong>Install app</strong> or <strong>Add to Home Screen</strong>. VulnX will open in its own window and keep the latest feed data available when you are offline.</p><button className="refresh-button" onClick={() => setInstallHelp(false)}>Got it</button></section></div>}
       {privacyOpen && <PrivacyNotice
         firstVisit={privacyFirstVisit}
