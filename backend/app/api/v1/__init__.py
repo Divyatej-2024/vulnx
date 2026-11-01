@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, or_, text
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import SessionLocal
@@ -57,7 +57,21 @@ def readiness():
     session = SessionLocal()
     try:
         session.execute(text("SELECT 1"))
-        return {"status": "ready", "database": "connected"}
+        inspector = inspect(session.get_bind())
+        tables = set(inspector.get_table_names())
+        required_tables = {"vulnerabilities", "threat_intelligence", "epss_history"}
+        if not required_tables.issubset(tables):
+            return JSONResponse(
+                status_code=503,
+                content={"status": "not_ready", "database": "connected", "schema": "migration_required"},
+            )
+        threat_columns = {column["name"] for column in inspector.get_columns("threat_intelligence")}
+        if not {"epss_score_date", "epss_model_version"}.issubset(threat_columns):
+            return JSONResponse(
+                status_code=503,
+                content={"status": "not_ready", "database": "connected", "schema": "migration_required"},
+            )
+        return {"status": "ready", "database": "connected", "schema": "current"}
     except SQLAlchemyError:
         return JSONResponse(
             status_code=503,
@@ -91,7 +105,7 @@ def list_vulns(
                 query = query.filter(Vulnerability.cvss_v3 >= lower, Vulnerability.cvss_v3 < upper)
         total = query.count()
         items = query.order_by(
-            ThreatIntelligence.is_kev.desc(),
+            ThreatIntelligence.is_kev.desc().nullslast(),
             ThreatIntelligence.epss_probability.desc().nullslast(),
             Vulnerability.cvss_v3.desc().nullslast(),
             Vulnerability.published_date.desc().nullslast(),

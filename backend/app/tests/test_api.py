@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
@@ -98,7 +98,7 @@ def test_health_endpoint(client):
 def test_readiness_endpoint_checks_database(client):
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "database": "connected"}
+    assert response.json() == {"status": "ready", "database": "connected", "schema": "current"}
 
 
 def test_readiness_endpoint_reports_database_failure_without_leaking_details(client, monkeypatch):
@@ -199,3 +199,23 @@ def test_epss_history_rejects_windows_over_90_days(client):
 def test_epss_history_returns_404_for_unknown_cve(client):
     response = client.get("/api/v1/vulns/CVE-2099-9999/epss-history")
     assert response.status_code == 404
+
+
+
+def test_readiness_reports_required_migration_for_legacy_schema(monkeypatch, tmp_path):
+    legacy_engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with legacy_engine.begin() as connection:
+        connection.execute(text("CREATE TABLE vulnerabilities (id INTEGER PRIMARY KEY)"))
+        connection.execute(text("CREATE TABLE threat_intelligence (cve_id VARCHAR PRIMARY KEY)"))
+    LegacySession = sessionmaker(bind=legacy_engine)
+
+    monkeypatch.setattr(api_v1, "SessionLocal", LegacySession)
+    response = TestClient(main.app).get("/api/v1/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "database": "connected",
+        "schema": "migration_required",
+    }
+    legacy_engine.dispose()

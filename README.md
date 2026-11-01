@@ -22,7 +22,13 @@ Requirements: Python 3.12 and Node.js 18+.
    uvicorn app.main:app --reload
    ```
 
-   The API creates `backend/dev.db` on startup. Interactive API docs are at <http://localhost:8000/docs>.
+   The API creates missing tables on startup, but it does not silently alter existing database tables. Apply the additive EPSS migration before using EPSS history against an existing database:
+
+   ```powershell
+   python -m app.migrations.add_epss_history
+   ```
+
+   Interactive API docs are at <http://localhost:8000/docs>.
 
 2. In a second terminal, start the dashboard:
 
@@ -58,7 +64,7 @@ Run a sync manually from the `backend` directory:
 python -m app.intel.sync
 ```
 
-The GitHub Actions workflow `.github/workflows/threat-intel-sync.yml` is scheduled daily and can also be run manually. It uses the existing `DATABASE_URL` repository secret; it does not store credentials in source. The sync requires that secret to point to the same database used by the API. It fetches both public datasets before writing and only upserts CVEs already present in VulnX. A successful run reports checked CVEs, source match counts and the sync timestamp.
+The GitHub Actions workflow `.github/workflows/threat-intel-sync.yml` is scheduled daily and can also be run manually. It uses the existing `DATABASE_URL` repository secret; it does not store credentials in source. The sync requires that secret to point to the same database used by the API. Before syncing, the workflow runs the idempotent additive EPSS migration; it creates missing intelligence tables and adds missing nullable provenance columns without deleting CVE records. It then fetches both public datasets before writing and only upserts CVEs already present in VulnX. A successful run reports checked CVEs, source match counts and the sync timestamp.
 
 The parser ignores FIRST's leading `#model_version` metadata line before reading the CSV header. EPSS values are probabilities from 0 to 1; the percentile is a relative ranking, not another probability.
 
@@ -78,6 +84,9 @@ A practical workflow is: search for a CVE or keyword → review severity and thr
 - `GET /api/v1/summary` — CVE totals, severity counts, CISA KEV matches, EPSS ≥10% count and EPSS coverage.
 - `GET /api/v1/vulns?limit=50&offset=0&search=CVE&severity=high` — filtered, paginated CVEs enriched with EPSS probability, EPSS percentile, KEV membership and priority score.
 - `GET /api/v1/vulns/{cve_id}` — CVE details plus available exploitation intelligence and CISA remediation metadata.
+- `GET /api/v1/vulns/{cve_id}/epss-history?days=90` — available daily EPSS snapshots for up to 90 days.
+  
+The readiness endpoint also checks the required EPSS schema. It returns HTTP 503 with `schema: migration_required` when the database is reachable but the additive migration has not been applied.
 
 The explainable 0–100 triage heuristic is `min(100, 5 × CVSS + 30 × EPSS + 20 if in CISA KEV)`. CVSS contributes at most 50 points, EPSS probability contributes at most 30, and confirmed KEV catalogue membership contributes 20. This is a transparent prioritisation aid—not a calibrated breach probability, a CVSS replacement, or an ML prediction. Missing EPSS data is represented as unavailable in the API, not as proof of zero exploitation risk. CVSS severity filters use the standard bands (Critical 9.0+, High 7.0–8.9, Medium 4.0–6.9, Low 0.1–3.9).
 
