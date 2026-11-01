@@ -28,6 +28,9 @@ beforeEach(() => {
           critical: 0,
           high: 1,
           latest_published: '2025-01-01T00:00:00',
+          kev_count: 1,
+          epss_high_count: 1,
+          epss_coverage: 1,
         },
       });
     }
@@ -40,6 +43,11 @@ beforeEach(() => {
           description: 'A sample vulnerability for UI testing.',
           published_date: '2025-01-01T00:00:00',
           cvss_v3: 7.5,
+          epss_probability: 0.75,
+          epss_percentile: 0.98,
+          is_kev: true,
+          priority_score: 82.25,
+          kev_required_action: 'Apply the vendor security update.',
           source: {},
         },
       });
@@ -54,6 +62,10 @@ beforeEach(() => {
           published_date: '2025-01-01T00:00:00',
           cvss_v3: 7.5,
           score: 0.75,
+          epss_probability: 0.75,
+          epss_percentile: 0.98,
+          is_kev: true,
+          priority_score: 82.25,
         }],
         total: 1,
         limit: 12,
@@ -75,6 +87,10 @@ test('renders the dashboard and vulnerability data returned by the API', async (
   expect(await screen.findByRole('row', { name: /CVE-2025-1234/i })).toBeInTheDocument();
   expect(screen.getByText('Tracked vulnerabilities')).toBeInTheDocument();
   expect(screen.getByText('High severity')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /threat intelligence coverage/i })).toBeInTheDocument();
+  expect(screen.getByText('Known exploited vulnerabilities')).toBeInTheDocument();
+  expect(screen.getByText('CISA KEV')).toBeInTheDocument();
+  expect(screen.getByText('EPSS 75.0%')).toBeInTheDocument();
 
   await waitFor(() => {
     expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns', {
@@ -93,6 +109,8 @@ test('opens and displays vulnerability details when a result is selected', async
 
   expect(await screen.findByRole('dialog')).toBeInTheDocument();
   expect(screen.getByText('A sample vulnerability for UI testing.')).toBeInTheDocument();
+  expect(screen.getByText('Apply the vendor security update.')).toBeInTheDocument();
+  expect(screen.getByText('82.25 / 100')).toBeInTheDocument();
   expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234');
 });
 
