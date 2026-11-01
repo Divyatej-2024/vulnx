@@ -120,7 +120,12 @@ def summary() -> dict:
         epss_latest_date = session.query(func.max(ThreatIntelligence.epss_score_date)).join(
             Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id
         ).scalar()
-        epss_model_version = session.query(ThreatIntelligence.epss_model_version).join(\n            Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id\n        ).filter(ThreatIntelligence.epss_model_version.isnot(None)).order_by(\n            ThreatIntelligence.epss_score_date.desc().nullslast()\n        ).limit(1).scalar()\n        epss_high_count = session.query(func.count(ThreatIntelligence.cve_id)).join(
+        epss_model_version = session.query(ThreatIntelligence.epss_model_version).join(
+            Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id
+        ).filter(ThreatIntelligence.epss_model_version.isnot(None)).order_by(
+            ThreatIntelligence.epss_score_date.desc().nullslast()
+        ).limit(1).scalar()
+        epss_high_count = session.query(func.count(ThreatIntelligence.cve_id)).join(
             Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id
         ).filter(ThreatIntelligence.epss_probability >= 0.1).scalar() or 0
         epss_coverage = session.query(func.count(ThreatIntelligence.cve_id)).join(
