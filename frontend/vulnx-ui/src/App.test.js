@@ -87,8 +87,8 @@ test('renders the dashboard and vulnerability data returned by the API', async (
   expect(await screen.findByRole('row', { name: /CVE-2025-1234/i })).toBeInTheDocument();
   expect(screen.getByText('Tracked vulnerabilities')).toBeInTheDocument();
   expect(screen.getByText('High severity')).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /threat intelligence coverage/i })).toBeInTheDocument();
-  expect(screen.getByText('Known exploited vulnerabilities')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /how much do we know about these vulnerabilities/i })).toBeInTheDocument();
+  expect(screen.getByText('Listed as exploited')).toBeInTheDocument();
   expect(screen.getByText('CISA KEV')).toBeInTheDocument();
   expect(screen.getByText('EPSS 75.0%')).toBeInTheDocument();
 
@@ -112,6 +112,7 @@ test('opens and displays vulnerability details when a result is selected', async
   expect(screen.getByText(/CISA action: Apply the vendor security update/)).toBeInTheDocument();
   expect(screen.getByText('80 / 100')).toBeInTheDocument();
   expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234');
+  expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234/epss-history', { params: { days: 90 } });
 });
 
 
