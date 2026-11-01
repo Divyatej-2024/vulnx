@@ -77,3 +77,115 @@
 .detail-intel strong{color:#334155}
 @media(max-width:700px){.intel-overview{padding:15px;margin-bottom:16px}.intel-overview-heading{gap:8px}.intel-overview-heading h2{font-size:14px}.intel-source-label{font-size:8px;padding:5px 7px}.intel-metrics{gap:7px}.intel-metrics>div{padding:9px}.intel-metric-label{font-size:9px;line-height:1.4}.intel-metrics strong{font-size:19px}.intel-metrics small{font-size:8px}}
 @media(max-width:420px){.intel-source-label{display:none}.intel-metrics{grid-template-columns:1fr}.intel-metrics>div{display:grid;grid-template-columns:1fr auto;align-items:center}.intel-metrics strong{grid-column:2;grid-row:1/3}.intel-metrics small{grid-column:1}}
+
+
+/* Responsive vulnerability-detail popup: keep long intelligence records usable on
+   small screens, short viewports, landscape and browser zoom. */
+.modal-backdrop {
+  padding: clamp(8px, 2.5vw, 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.detail-modal {
+  width: min(600px, 100%);
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  overflow-wrap: anywhere;
+}
+.detail-modal h2,
+.detail-modal h3,
+.detail-meta,
+.detail-intel,
+.detail-description {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-modal h2 {
+  padding-right: 24px;
+  line-height: 1.3;
+}
+.detail-intel > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-intel small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.detail-description {
+  white-space: pre-wrap;
+}
+.modal-close {
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+.modal-close:focus-visible,
+.nvd-link:focus-visible {
+  outline: 2px solid #6875eb;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .modal-backdrop {
+    padding: 8px;
+    align-items: center;
+  }
+  .detail-modal {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 23px 16px 20px;
+    border-radius: 12px;
+  }
+  .detail-modal h2 {
+    font-size: 20px;
+    padding-right: 30px;
+  }
+  .detail-meta {
+    gap: 9px 13px;
+    align-items: flex-start;
+  }
+  .detail-modal h3 {
+    margin-top: 16px;
+  }
+  .detail-intel {
+    padding: 10px;
+    font-size: 10px;
+  }
+  .detail-description {
+    font-size: 11px;
+    line-height: 1.7;
+  }
+  .modal-close {
+    right: 10px;
+    top: 8px;
+  }
+}
+@media (max-width: 360px) {
+  .detail-modal {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+  .detail-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .detail-meta > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 520px) {
+  .modal-backdrop {
+    align-items: start;
+  }
+  .detail-modal {
+    margin-block: 4px;
+  }
+}
