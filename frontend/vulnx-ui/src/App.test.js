@@ -147,3 +147,50 @@ test('shows the waiting state when the API is reachable but the feed is still em
   expect(await screen.findByRole('heading', { name: /vulnerability data is not available yet/i })).toBeInTheDocument();
   expect(screen.getByText(/not exact NVD import progress/i)).toBeInTheDocument();
 });
+
+
+test('opens vulnerability details when EPSS history is temporarily unavailable', async () => {
+  axios.get.mockImplementation((url) => {
+    if (url.endsWith('/epss-history')) {
+      return Promise.reject(new Error('History table is not available'));
+    }
+    return Promise.resolve({
+      data: {
+        cve_id: 'CVE-2025-1234',
+        title: 'CVE-2025-1234',
+        description: 'Core vulnerability details remain available.',
+        published_date: '2025-01-01T00:00:00',
+        cvss_v3: 7.5,
+        epss_probability: 0.75,
+        epss_percentile: 0.98,
+        is_kev: true,
+        priority_score: 80.0,
+        source: {},
+        vulns: [{
+          cve_id: 'CVE-2025-1234',
+          title: 'CVE-2025-1234',
+          description: 'Core vulnerability details remain available.',
+          published_date: '2025-01-01T00:00:00',
+          cvss_v3: 7.5,
+          score: 0.75,
+          epss_probability: 0.75,
+          epss_percentile: 0.98,
+          is_kev: true,
+          priority_score: 80.0,
+        }],
+        total: 1,
+        limit: 12,
+        offset: 0,
+      },
+    });
+  });
+
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: /I understand — continue/i }));
+  const row = await screen.findByRole('row', { name: /CVE-2025-1234/i });
+  fireEvent.click(row);
+
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByText('Core vulnerability details remain available.')).toBeInTheDocument();
+  expect(screen.getByText(/No historical daily snapshots are available yet/)).toBeInTheDocument();
+});
