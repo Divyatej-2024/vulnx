@@ -40,5 +40,7 @@ jobs:
             echo "DATABASE_URL repository secret is not configured."
             exit 1
           fi
+      - name: Apply additive EPSS schema migration
+        run: python -m app.migrations.add_epss_history
       - name: Synchronise public exploitation intelligence
         run: python -m app.intel.sync
