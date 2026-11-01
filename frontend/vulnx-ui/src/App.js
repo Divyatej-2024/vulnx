@@ -190,13 +190,52 @@ function App() {
             <Stat label="Latest publication" value={summary?.latest_published ? prettyDate(summary.latest_published) : '—'} icon="◷" tone="green" note="Most recent CVE in your feed" />
           </section>
           <section className="intel-overview" aria-label="Threat intelligence coverage">
-            <div className="intel-overview-heading"><div><div className="eyebrow">EXPLOITATION INTELLIGENCE</div><h2>Threat intelligence coverage</h2><p>Correlates your NVD records with CISA KEV and FIRST EPSS public datasets.</p></div><span className="intel-source-label">CISA KEV · FIRST EPSS</span></div>
-            <div className="intel-metrics">
-              <div><span className="intel-metric-label">Known exploited vulnerabilities</span><strong>{summary?.kev_count == null ? '—' : summary.kev_count.toLocaleString()}</strong><small>Matched in CISA KEV catalogue</small></div>
-              <div><span className="intel-metric-label">Elevated EPSS probability</span><strong>{summary?.epss_high_count == null ? '—' : summary.epss_high_count.toLocaleString()}</strong><small>EPSS probability ≥ 10%</small></div>
-              <div><span className="intel-metric-label">EPSS coverage</span><strong>{summary?.epss_coverage == null || !summary?.total ? '—' : Math.round((summary.epss_coverage / summary.total) * 100) + '%'}</strong><small>{summary?.epss_coverage == null ? 'Awaiting intelligence sync' : summary.epss_coverage.toLocaleString() + ' CVEs with EPSS scores'}</small></div>
+            <div className="intel-overview-heading">
+              <div>
+                <div className="eyebrow">WHAT THE THREAT DATA TELLS US</div>
+                <h2>How much do we know about these vulnerabilities?</h2>
+                <p>VulnX compares the vulnerabilities in your feed with two public security sources.</p>
+              </div>
+              <span className="intel-source-label">CISA KEV · FIRST EPSS</span>
             </div>
-            <p className="intel-disclaimer">No match is not evidence of no risk. Intelligence values remain unavailable until the scheduled feed synchronisation has completed.</p>
+            <div className="intel-story" aria-live="polite">
+              {summary == null ? (
+                <p>We haven't been able to load the threat intelligence figures yet. Try refreshing when the API is available.</p>
+              ) : (
+                <p>
+                  {summary.total == null ? 'Your vulnerability feed is still being counted.' : `We're looking across ${Number(summary.total).toLocaleString()} vulnerability records. `}
+                  {summary.kev_count == null
+                    ? 'We do not yet have a confirmed CISA KEV match count.'
+                    : summary.kev_count > 0
+                      ? `CISA lists ${Number(summary.kev_count).toLocaleString()} of these in its Known Exploited Vulnerabilities catalogue — these deserve prompt review.`
+                      : 'There are currently no CISA KEV matches recorded in this dataset.'}
+                  {' '}
+                  {summary.epss_high_count == null
+                    ? 'EPSS estimates are not available yet.'
+                    : summary.epss_high_count > 0
+                      ? `FIRST EPSS flags ${Number(summary.epss_high_count).toLocaleString()} records with an estimated exploitation probability of 10% or higher over the next 30 days.`
+                      : 'No records currently meet VulnX’s elevated EPSS threshold of 10%.'}
+                </p>
+              )}
+            </div>
+            <div className="intel-metrics">
+              <div>
+                <span className="intel-metric-label">Listed as exploited</span>
+                <strong>{summary?.kev_count == null ? '—' : Number(summary.kev_count).toLocaleString()}</strong>
+                <small>{summary?.kev_count > 0 ? 'Found in CISA’s KEV catalogue' : 'CISA catalogue matches in stored data'}</small>
+              </div>
+              <div>
+                <span className="intel-metric-label">Higher EPSS estimates</span>
+                <strong>{summary?.epss_high_count == null ? '—' : Number(summary.epss_high_count).toLocaleString()}</strong>
+                <small>Estimated exploitation chance of 10% or more</small>
+              </div>
+              <div>
+                <span className="intel-metric-label">Records with EPSS data</span>
+                <strong>{summary?.epss_coverage == null || !summary?.total ? '—' : Math.round((summary.epss_coverage / summary.total) * 100) + '%'}</strong>
+                <small>{summary?.epss_coverage == null ? 'Not available yet' : `${Number(summary.epss_coverage).toLocaleString()} of ${Number(summary.total).toLocaleString()} records`}</small>
+              </div>
+            </div>
+            <p className="intel-disclaimer">A KEV match means CISA has listed the vulnerability as exploited. EPSS is an estimate, not proof of an attack. These figures describe the records currently stored in VulnX; a zero or missing value should not be treated as proof that a system is safe. Check that the intelligence feeds have updated before relying on an absence of matches.</p>
           </section>
 
           <section className="table-card" id="vulnerability-table">
