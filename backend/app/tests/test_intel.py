@@ -80,9 +80,9 @@ def test_sync_only_persists_vulnx_cves_and_is_repeatable(tmp_path):
 
 def test_parse_epss_feed_reads_first_metadata_and_scores():
     content = (
-        "#model_version:v2026.01,score_date:2026-11-01\\n"
-        "cve,epss,percentile\\n"
-        "CVE-2026-1000,0.625,0.975\\n"
+        "#model_version:v2026.01,score_date:2026-11-01\n"
+        "cve,epss,percentile\n"
+        "CVE-2026-1000,0.625,0.975\n"
     )
     feed = parse_epss_feed(gzip.compress(content.encode()))
     assert feed.score_date.isoformat() == "2026-11-01"
@@ -102,8 +102,8 @@ def test_sync_persists_daily_epss_history_and_provenance(tmp_path):
 
     kev_payload = json.dumps({"vulnerabilities": []}).encode()
     epss_payload = gzip.compress(
-        b"#model_version:v2026.01,score_date:2026-11-01\\n"
-        b"cve,epss,percentile\\nCVE-2026-1000,0.625,0.975\\n"
+        b"#model_version:v2026.01,score_date:2026-11-01\n"
+        b"cve,epss,percentile\nCVE-2026-1000,0.625,0.975\n"
     )
     payloads = {
         "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json": kev_payload,
