@@ -184,10 +184,19 @@ def epss_history(
             EPSSHistory.score_date <= today,
         ).order_by(EPSSHistory.score_date.asc()).all()
 
-        previous = None
+        previous_probability = None
+        previous_model_version = None
         history = []
         for point in points:
-            change = None if previous is None else round(point.epss_probability - previous, 6)
+            same_model = (
+                point.model_version is not None
+                and point.model_version == previous_model_version
+            )
+            change = (
+                round(point.epss_probability - previous_probability, 6)
+                if same_model and previous_probability is not None
+                else None
+            )
             history.append({
                 "score_date": point.score_date.isoformat(),
                 "epss_probability": point.epss_probability,
@@ -195,7 +204,8 @@ def epss_history(
                 "model_version": point.model_version,
                 "change_from_previous": change,
             })
-            previous = point.epss_probability
+            previous_probability = point.epss_probability
+            previous_model_version = point.model_version
 
         return {
             "cve_id": cve_id.upper(),
