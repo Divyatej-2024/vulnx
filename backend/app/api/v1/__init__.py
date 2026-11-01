@@ -68,8 +68,7 @@ def list_vulns(
                 lower, upper = bounds[severity]
                 query = query.filter(Vulnerability.cvss_v3 >= lower, Vulnerability.cvss_v3 < upper)
         total = query.count()
-        items = query.order_by(Vulnerability.cvss_v3.desc().nullslast(), Vulnerability.published_date.desc().nullslast()) \\
-            .offset(offset).limit(limit).all()
+        items = query.order_by(Vulnerability.cvss_v3.desc().nullslast(), Vulnerability.published_date.desc().nullslast()).offset(offset).limit(limit).all()
         return {"vulns": [_record(item) for item in items], "total": total, "limit": limit, "offset": offset}
     finally:
         session.close()
