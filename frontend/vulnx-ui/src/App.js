@@ -156,11 +156,19 @@ function App() {
 
   const openDetails = async (cveId) => {
     try {
-      const [response, history] = await Promise.all([
-        axios.get(`${API}/vulns/${cveId}`),
-        axios.get(`${API}/vulns/${cveId}/epss-history`, { params: { days: 90 } }),
-      ]);
-      setSelected({ ...response.data, epss_history: history.data });
+      const response = await axios.get(`${API}/vulns/${cveId}`);
+      // Historical enrichment is optional: a missing/unmigrated history table
+      // must not prevent users from opening the core vulnerability record.
+      let epssHistory = null;
+      try {
+        const history = await axios.get(`${API}/vulns/${cveId}/epss-history`, {
+          params: { days: 90 },
+        });
+        epssHistory = history.data;
+      } catch {
+        epssHistory = null;
+      }
+      setSelected({ ...response.data, epss_history: epssHistory });
     } catch (e) {
       setError('Could not load vulnerability details. Please try again.');
     }
