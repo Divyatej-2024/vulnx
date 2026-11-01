@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import SessionLocal
-from app.models import ThreatIntelligence, Vulnerability
+from app.models import EPSSHistory, ThreatIntelligence, Vulnerability
 
 router = APIRouter()
 
@@ -32,6 +32,8 @@ def _record(vuln: Vulnerability, intel: ThreatIntelligence | None = None) -> dic
         "score": round((vuln.cvss_v3 or 0.0) / 10, 3),
         "epss_probability": epss,
         "epss_percentile": percentile,
+        "epss_score_date": intel.epss_score_date.isoformat() if intel and intel.epss_score_date else None,
+        "epss_model_version": intel.epss_model_version if intel else None,
         "is_kev": is_kev,
         "kev_date_added": intel.kev_date_added.isoformat() if intel and intel.kev_date_added else None,
         "kev_due_date": intel.kev_due_date.isoformat() if intel and intel.kev_due_date else None,
@@ -115,7 +117,7 @@ def summary() -> dict:
         kev_count = session.query(func.count(ThreatIntelligence.cve_id)).join(
             Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id
         ).filter(ThreatIntelligence.is_kev.is_(True)).scalar() or 0
-        epss_high_count = session.query(func.count(ThreatIntelligence.cve_id)).join(
+        epss_latest_date = session.query(func.max(ThreatIntelligence.epss_score_date)).join(\n            Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id\n        ).scalar()\n        epss_model_version = session.query(ThreatIntelligence.epss_model_version).join(\n            Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id\n        ).filter(ThreatIntelligence.epss_model_version.isnot(None)).order_by(\n            ThreatIntelligence.epss_score_date.desc().nullslast()\n        ).limit(1).scalar()\n        epss_high_count = session.query(func.count(ThreatIntelligence.cve_id)).join(
             Vulnerability, Vulnerability.cve_id == ThreatIntelligence.cve_id
         ).filter(ThreatIntelligence.epss_probability >= 0.1).scalar() or 0
         epss_coverage = session.query(func.count(ThreatIntelligence.cve_id)).join(
@@ -125,6 +127,8 @@ def summary() -> dict:
             "total": total, "critical": critical, "high": high,
             "kev_count": kev_count, "epss_high_count": epss_high_count,
             "epss_coverage": epss_coverage,
+            "epss_score_date": epss_latest_date.isoformat() if epss_latest_date else None,
+            "epss_model_version": epss_model_version,
             "latest_published": latest.isoformat() if latest else None,
             "updated_at": datetime.utcnow().isoformat() + "Z",
         }
@@ -145,5 +149,52 @@ def get_vuln(cve_id: str) -> dict:
         result = _record(vuln, intel)
         result["source"] = vuln.raw
         return result
+    finally:
+        session.close()
+
+
+
+@router.get("/vulns/{cve_id}/epss-history")
+def epss_history(
+    cve_id: str,
+    days: int = Query(default=90, ge=1, le=90),
+) -> dict:
+    """Return available daily EPSS snapshots, capped at the product's 90-day window."""
+    session = SessionLocal()
+    try:
+        exists = session.query(Vulnerability.id).filter(
+            Vulnerability.cve_id == cve_id.upper()
+        ).first()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Vulnerability not found")
+
+        today = date.today()
+        cutoff = today - timedelta(days=days - 1)
+        points = session.query(EPSSHistory).filter(
+            EPSSHistory.cve_id == cve_id.upper(),
+            EPSSHistory.score_date >= cutoff,
+            EPSSHistory.score_date <= today,
+        ).order_by(EPSSHistory.score_date.asc()).all()
+
+        previous = points[0].epss_probability if points else None
+        history = []
+        for point in points:
+            change = None if previous is None else round(point.epss_probability - previous, 6)
+            history.append({
+                "score_date": point.score_date.isoformat(),
+                "epss_probability": point.epss_probability,
+                "epss_percentile": point.epss_percentile,
+                "model_version": point.model_version,
+                "change_from_previous": change,
+            })
+            previous = point.epss_probability
+
+        return {
+            "cve_id": cve_id.upper(),
+            "window_days": days,
+            "available_points": len(history),
+            "history": history,
+            "note": "EPSS estimates exploitation likelihood over the next 30 days. Historical changes are model estimates, not evidence that an attack occurred.",
+        }
     finally:
         session.close()
