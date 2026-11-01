@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 import PrivacyNotice from './PrivacyNotice';
+import IntelligenceGuide from './IntelligenceGuide';
 
 const configuredApiUrl = process.env.REACT_APP_API_URL?.trim();
 const API = (configuredApiUrl || '/api/v1').replace(/\/+$/, '');
@@ -178,6 +179,7 @@ function App() {
         <div className="content-wrap">
           {!isOnline && <div className="offline-banner" role="status"><span className="offline-indicator" /> Offline mode · showing saved feed data where available</div>}
           <section className="page-heading"><div><div className="eyebrow">THREAT INTELLIGENCE</div><h1>Vulnerability overview</h1><p>Track, search, and prioritize vulnerabilities from the NVD.</p></div><div className={`feed-status ${waitingForFeed ? 'feed-status-waiting' : ''}`}><span className={waitingForFeed ? 'wait-dot' : 'live-dot'} /> {waitingForFeed ? 'Feed data pending' : error ? 'API unavailable' : loading ? 'Checking API…' : 'Feed operational'}</div></section>
+          <IntelligenceGuide />
 
           {waitingForFeed && <section className="import-panel" aria-live="polite"><div className="import-orbit"><span className="import-orbit-core">NVD</span></div><div className="import-copy"><div className="import-kicker"><span className="wait-dot" /> DATA INGESTION</div><h2>Vulnerability data is not available yet</h2><p>The dashboard stays usable while VulnX waits for its data API. It will check again automatically and populate when records become available. This status reflects API availability, not exact NVD import progress.</p><div className="import-progress"><span /></div><div className="import-foot"><span><span className="loader" /> Waiting for the API</span><span>Auto-check every 30 seconds</span></div></div><button className="import-retry" onClick={load} disabled={loading}>{loading ? 'Checking…' : 'Check now ↻'}</button></section>}
 

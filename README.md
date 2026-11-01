@@ -1,5 +1,11 @@
 # VulnX
 
+**Know what matters. Fix what matters.**
+
+VulnX turns public vulnerability information into an understandable review workflow. Search for a CVE, understand how serious it may be, check whether exploitation is known or estimated, and use the evidence to decide what to investigate next.
+
+**Important boundary:** VulnX is currently a public vulnerability-intelligence dashboard. It does not scan your network, discover your installed products, confirm that your organisation is affected, or apply patches. Always verify exposure against your own asset inventory and vendor advisories.
+
 VulnX is a vulnerability intelligence dashboard backed by NVD CVE feeds, enriched with CISA Known Exploited Vulnerabilities (KEV) and FIRST Exploit Prediction Scoring System (EPSS) data. The repository contains a React dashboard, a FastAPI service, SQLAlchemy persistence, NVD ingestion, and an experimental feature export pipeline.
 
 ## Run locally
@@ -55,6 +61,15 @@ python -m app.intel.sync
 The GitHub Actions workflow `.github/workflows/threat-intel-sync.yml` is scheduled daily and can also be run manually. It uses the existing `DATABASE_URL` repository secret; it does not store credentials in source. The sync requires that secret to point to the same database used by the API. It fetches both public datasets before writing and only upserts CVEs already present in VulnX. A successful run reports checked CVEs, source match counts and the sync timestamp.
 
 The parser ignores FIRST's leading `#model_version` metadata line before reading the CSV header. EPSS values are probabilities from 0 to 1; the percentile is a relative ranking, not another probability.
+
+## Understanding the dashboard
+
+- **CVSS** describes the technical severity of a vulnerability (0–10); it does not prove exploitation.
+- **EPSS** estimates the probability of exploitation in the next 30 days (0–100%); it is a forecast, not a guarantee.
+- **CISA KEV** identifies vulnerabilities included in CISA's catalogue of vulnerabilities known to have been exploited.
+- **VulnX priority** is an explainable sorting aid combining CVSS, EPSS and KEV evidence. It is not a breach probability, a calibrated risk model, or an ML prediction.
+
+A practical workflow is: search for a CVE or keyword → review severity and threat evidence → open the record → verify whether the affected product/version exists in your environment → follow the vendor's remediation guidance.
 
 ## API
 
