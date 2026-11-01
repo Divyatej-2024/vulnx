@@ -1,9 +1,10 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, JSON, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Float, DateTime, Date, Boolean, Text, JSON, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
 from pydantic import BaseModel
 
 Base = declarative_base()
+
 
 class Vulnerability(Base):
     __tablename__ = "vulnerabilities"
@@ -16,3 +17,19 @@ class Vulnerability(Base):
     cvss_v3 = Column(Float)
     raw = Column(JSON)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ThreatIntelligence(Base):
+    """Latest external exploitation intelligence associated with a CVE."""
+    __tablename__ = "threat_intelligence"
+
+    cve_id = Column(String, primary_key=True, index=True)
+    epss_probability = Column(Float, nullable=True)
+    epss_percentile = Column(Float, nullable=True)
+    is_kev = Column(Boolean, nullable=False, default=False, index=True)
+    kev_date_added = Column(Date, nullable=True)
+    kev_due_date = Column(Date, nullable=True)
+    kev_required_action = Column(Text, nullable=True)
+    kev_vendor_project = Column(String, nullable=True)
+    kev_product = Column(String, nullable=True)
+    synced_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)

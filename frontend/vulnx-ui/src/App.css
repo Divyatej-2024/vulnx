@@ -54,3 +54,24 @@
 .privacy-footnote{font-size:10px;color:#929cab;text-align:center;margin:13px 0 0}
 @media(max-width:600px){.privacy-backdrop{padding:0;align-items:stretch}.privacy-dialog{max-height:100vh;width:100%;border-radius:0;padding:24px 18px}.privacy-points{grid-template-columns:1fr}.privacy-dialog h2{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.privacy-backdrop{backdrop-filter:none}}
+
+/* VulnX 1.2 threat-intelligence presentation */
+.intel-overview{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 22px;box-shadow:0 2px 7px #26324405}
+.intel-overview-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.intel-overview-heading h2{font:600 15px 'Space Grotesk',sans-serif;margin:3px 0 5px}
+.intel-overview-heading p{font-size:10px;color:#929ba8;margin:0}
+.intel-source-label{white-space:nowrap;border:1px solid #e5e9f0;border-radius:20px;padding:6px 9px;color:#687586;font-size:9px;font-weight:700}
+.intel-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:17px}
+.intel-metrics>div{border:1px solid #edf0f4;background:#fafbfe;border-radius:8px;padding:13px}
+.intel-metric-label{display:block;color:#748091;font-size:10px}
+.intel-metrics strong{display:block;font:600 23px 'Space Grotesk',sans-serif;color:#263348;margin-top:5px}
+.intel-metrics small{display:block;color:#9aa3af;font-size:9px;margin-top:3px}
+.intel-disclaimer{font-size:9px;line-height:1.6;color:#929ba8;margin:12px 0 0}
+.intel-cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.kev-pill{background:#fff0f0;color:#c24c53;border-radius:10px;padding:4px 6px;font-size:8px;font-weight:700;letter-spacing:.3px}
+.epss-value{font-size:9px;color:#5966d8;font-weight:600}
+.intel-empty{font-size:9px;color:#a3abb6}
+.detail-intel{display:grid;gap:8px;padding:12px;border:1px solid #e9edf3;background:#fafbfe;border-radius:8px;color:#697587;font-size:11px;line-height:1.5}
+.detail-intel strong{color:#334155}
+@media(max-width:700px){.intel-overview{padding:15px;margin-bottom:16px}.intel-overview-heading{gap:8px}.intel-overview-heading h2{font-size:14px}.intel-source-label{font-size:8px;padding:5px 7px}.intel-metrics{gap:7px}.intel-metrics>div{padding:9px}.intel-metric-label{font-size:9px;line-height:1.4}.intel-metrics strong{font-size:19px}.intel-metrics small{font-size:8px}}
+@media(max-width:420px){.intel-source-label{display:none}.intel-metrics{grid-template-columns:1fr}.intel-metrics>div{display:grid;grid-template-columns:1fr auto;align-items:center}.intel-metrics strong{grid-column:2;grid-row:1/3}.intel-metrics small{grid-column:1}}

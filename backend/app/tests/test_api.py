@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import main
 from app.api import v1 as api_v1
-from app.models import Base, Vulnerability
+from app.models import Base, ThreatIntelligence, Vulnerability
 
 
 @pytest.fixture
@@ -45,6 +45,15 @@ def client(tmp_path, monkeypatch):
                 raw={"cve": {"id": "CVE-2025-0003"}},
             ),
         ])
+        session.add(ThreatIntelligence(
+            cve_id="CVE-2025-0001",
+            epss_probability=0.8,
+            epss_percentile=0.99,
+            is_kev=True,
+            kev_date_added=date(2025, 1, 10),
+            kev_due_date=date(2025, 2, 10),
+            kev_required_action="Apply the vendor security update.",
+        ))
         session.commit()
 
     monkeypatch.setattr(api_v1, "SessionLocal", TestSessionLocal)
@@ -99,6 +108,9 @@ def test_summary_counts_total_and_severity(client):
     assert data["critical"] == 1
     assert data["high"] == 1
     assert data["latest_published"] == "2025-03-01T00:00:00"
+    assert data["kev_count"] == 1
+    assert data["epss_high_count"] == 1
+    assert data["epss_coverage"] == 1
 
 
 def test_list_supports_search_severity_and_pagination(client):
@@ -108,6 +120,9 @@ def test_list_supports_search_severity_and_pagination(client):
     assert data["total"] == 1
     assert len(data["vulns"]) == 1
     assert data["vulns"][0]["cve_id"] == "CVE-2025-0001"
+    assert data["vulns"][0]["is_kev"] is True
+    assert data["vulns"][0]["epss_probability"] == 0.8
+    assert data["vulns"][0]["priority_score"] == 93.0
 
     high = client.get("/api/v1/vulns", params={"severity": "high"}).json()
     assert [row["cve_id"] for row in high["vulns"]] == ["CVE-2025-0002"]
@@ -125,6 +140,8 @@ def test_detail_returns_source_and_missing_record_is_404(client):
     assert response.status_code == 200
     assert response.json()["cve_id"] == "CVE-2025-0001"
     assert response.json()["source"] == {"cve": {"id": "CVE-2025-0001"}}
+    assert response.json()["is_kev"] is True
+    assert response.json()["kev_required_action"] == "Apply the vendor security update."
 
     missing = client.get("/api/v1/vulns/CVE-2099-9999")
     assert missing.status_code == 404
