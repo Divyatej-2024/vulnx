@@ -184,7 +184,7 @@ def epss_history(
             EPSSHistory.score_date <= today,
         ).order_by(EPSSHistory.score_date.asc()).all()
 
-        previous = points[0].epss_probability if points else None
+        previous = None
         history = []
         for point in points:
             change = None if previous is None else round(point.epss_probability - previous, 6)
