@@ -46,7 +46,7 @@ beforeEach(() => {
           epss_probability: 0.75,
           epss_percentile: 0.98,
           is_kev: true,
-          priority_score: 82.25,
+          priority_score: 80.0,
           kev_required_action: 'Apply the vendor security update.',
           source: {},
         },
@@ -65,7 +65,7 @@ beforeEach(() => {
           epss_probability: 0.75,
           epss_percentile: 0.98,
           is_kev: true,
-          priority_score: 82.25,
+          priority_score: 80.0,
         }],
         total: 1,
         limit: 12,
@@ -110,7 +110,7 @@ test('opens and displays vulnerability details when a result is selected', async
   expect(await screen.findByRole('dialog')).toBeInTheDocument();
   expect(screen.getByText('A sample vulnerability for UI testing.')).toBeInTheDocument();
   expect(screen.getByText('Apply the vendor security update.')).toBeInTheDocument();
-  expect(screen.getByText('82.25 / 100')).toBeInTheDocument();
+  expect(screen.getByText('80.0 / 100')).toBeInTheDocument();
   expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234');
 });
 
