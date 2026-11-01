@@ -1,7 +1,9 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, or_
+from fastapi.responses import JSONResponse
+from sqlalchemy import func, or_, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import SessionLocal
 from app.models import Vulnerability
@@ -24,7 +26,25 @@ def _record(vuln: Vulnerability) -> dict:
 
 @router.get("/health")
 def health() -> dict:
+    """Liveness check: confirms that the API process can answer requests."""
     return {"status": "ok"}
+
+
+@router.get("/ready")
+def readiness():
+    """Readiness check: confirms the API can reach its configured database."""
+    session = SessionLocal()
+    try:
+        session.execute(text("SELECT 1"))
+        return {"status": "ready", "database": "connected"}
+    except SQLAlchemyError:
+        # Do not expose connection strings, credentials, or provider error details.
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "database": "unavailable"},
+        )
+    finally:
+        session.close()
 
 
 @router.get("/vulns")
@@ -48,8 +68,7 @@ def list_vulns(
                 lower, upper = bounds[severity]
                 query = query.filter(Vulnerability.cvss_v3 >= lower, Vulnerability.cvss_v3 < upper)
         total = query.count()
-        items = query.order_by(Vulnerability.cvss_v3.desc().nullslast(), Vulnerability.published_date.desc().nullslast()) \
-            .offset(offset).limit(limit).all()
+        items = query.order_by(Vulnerability.cvss_v3.desc().nullslast(), Vulnerability.published_date.desc().nullslast()).offset(offset).limit(limit).all()
         return {"vulns": [_record(item) for item in items], "total": total, "limit": limit, "offset": offset}
     finally:
         session.close()

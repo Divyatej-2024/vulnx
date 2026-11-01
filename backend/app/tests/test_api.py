@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from app import main
@@ -67,6 +68,27 @@ def test_health_endpoint(client):
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_readiness_endpoint_checks_database(client):
+    response = client.get("/api/v1/ready")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "database": "connected"}
+
+
+def test_readiness_endpoint_reports_database_failure_without_leaking_details(client, monkeypatch):
+    class BrokenSession:
+        def execute(self, _statement):
+            raise OperationalError("SELECT 1", {}, Exception("private connection detail"))
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(api_v1, "SessionLocal", lambda: BrokenSession())
+    response = client.get("/api/v1/ready")
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready", "database": "unavailable"}
+    assert "private connection detail" not in response.text
 
 
 def test_summary_counts_total_and_severity(client):

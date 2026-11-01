@@ -9,7 +9,7 @@ from app.db import init_db
 app = FastAPI(
     title="VulnX API",
     description="Search and prioritize vulnerabilities from NVD feeds.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 cors_origins = [
