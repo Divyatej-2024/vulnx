@@ -9,7 +9,8 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "17 4 * * *"
+    # NVD recent and modified feeds are checked every two hours.
+    - cron: "17 */2 * * *"
 
 permissions:
   contents: read
