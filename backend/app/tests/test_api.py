@@ -122,7 +122,7 @@ def test_list_supports_search_severity_and_pagination(client):
     assert data["vulns"][0]["cve_id"] == "CVE-2025-0001"
     assert data["vulns"][0]["is_kev"] is True
     assert data["vulns"][0]["epss_probability"] == 0.8
-    assert data["vulns"][0]["priority_score"] == 69.0
+    assert data["vulns"][0]["priority_score"] == 93.0
 
     high = client.get("/api/v1/vulns", params={"severity": "high"}).json()
     assert [row["cve_id"] for row in high["vulns"]] == ["CVE-2025-0002"]
