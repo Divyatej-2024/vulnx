@@ -194,7 +194,7 @@ def sync_intelligence(session_factory=SessionLocal, downloader=_download) -> dic
                 ["epss_probability", "epss_percentile", "model_version", "recorded_at"],
             )
 
-        cutoff = (epss_feed.score_date or synced_at.date()) - timedelta(days=EPSS_HISTORY_DAYS - 1)
+        cutoff = synced_at.date() - timedelta(days=EPSS_HISTORY_DAYS - 1)
         session.query(EPSSHistory).filter(EPSSHistory.score_date < cutoff).delete(synchronize_session=False)
         session.commit()
         return {
