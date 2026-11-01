@@ -109,7 +109,7 @@ test('opens and displays vulnerability details when a result is selected', async
 
   expect(await screen.findByRole('dialog')).toBeInTheDocument();
   expect(screen.getByText('A sample vulnerability for UI testing.')).toBeInTheDocument();
-  expect(screen.getByText(/CISA action: Apply the vendor security update\\./)).toBeInTheDocument();
+  expect(screen.getByText(/CISA action: Apply the vendor security update/)).toBeInTheDocument();
   expect(screen.getByText('80 / 100')).toBeInTheDocument();
   expect(axios.get).toHaveBeenCalledWith('/api/v1/vulns/CVE-2025-1234');
 });
