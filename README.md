@@ -75,6 +75,7 @@ VulnX can optionally enrich an already-ingested CVE with metadata from Shodan's 
 - Source: <https://cvedb.shodan.io/>
 - API route: `GET /api/v1/vulns/{cve_id}/shodan`
 - API key: **not required** for this public CVEDB endpoint. No `SHODAN_API_KEY` environment variable is used or expected.
+- Licensing: Shodan states CVEDB is free for non-commercial use; obtain the appropriate Shodan licence before using this integration commercially.
 - Cache: successful records are stored separately in `shodan_cve_intelligence` for 24 hours.
 - Scope: only CVE identifiers already present in VulnX are eligible; unknown CVEs return HTTP 404.
 - Failure handling: upstream errors return a generic HTTP 503 response; the frontend still displays the core NVD/KEV/EPSS record.
