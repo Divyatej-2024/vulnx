@@ -100,7 +100,8 @@ A practical workflow is: search for a CVE or keyword → review severity and thr
 - `GET /api/v1/summary` — CVE totals, severity counts, CISA KEV matches, EPSS ≥10% count and EPSS coverage.
 - `GET /api/v1/vulns?limit=50&offset=0&search=CVE&severity=high` — filtered, paginated CVEs enriched with EPSS probability, EPSS percentile, KEV membership and priority score.
 - `GET /api/v1/vulns/{cve_id}` — CVE details plus available exploitation intelligence and CISA remediation metadata.
-- `GET /api/v1/vulns/{cve_id}/epss-history?days=90\n- `GET /api/v1/vulns/{cve_id}/shodan` — cached Shodan CVEDB metadata for a CVE already stored in VulnX.` — available daily EPSS snapshots for up to 90 days.
+  - `GET /api/v1/vulns/{cve_id}/epss-history?days=90` — available daily EPSS snapshots for up to 90 days.
+  - `GET /api/v1/vulns/{cve_id}/shodan` — cached Shodan CVEDB metadata for a CVE already stored in VulnX.
   
 The readiness endpoint also checks the required EPSS schema. It returns HTTP 503 with `schema: migration_required` when the database is reachable but the additive migration has not been applied.
 
