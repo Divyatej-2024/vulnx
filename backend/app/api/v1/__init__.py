@@ -60,7 +60,7 @@ def readiness():
         session.execute(text("SELECT 1"))
         inspector = inspect(session.get_bind())
         tables = set(inspector.get_table_names())
-        required_tables = {"vulnerabilities", "threat_intelligence", "epss_history"}
+        required_tables = {"vulnerabilities", "threat_intelligence", "epss_history", "shodan_cve_intelligence"}
         if not required_tables.issubset(tables):
             return JSONResponse(
                 status_code=503,
