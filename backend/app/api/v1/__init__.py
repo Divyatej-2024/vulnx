@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import SessionLocal
 from app.models import EPSSHistory, ThreatIntelligence, Vulnerability
+from app.intel.shodan_cvedb import ShodanUnavailable, get_shodan_cve
 
 router = APIRouter()
 
@@ -174,6 +175,31 @@ def get_vuln(cve_id: str) -> dict:
     finally:
         session.close()
 
+
+
+@router.get("/vulns/{cve_id}/shodan")
+def shodan_cve_enrichment(cve_id: str) -> dict:
+    """Return cached Shodan CVEDB metadata for a CVE already tracked by VulnX."""
+    normalized = cve_id.upper()
+    session = SessionLocal()
+    try:
+        exists = session.query(Vulnerability.id).filter(
+            Vulnerability.cve_id == normalized
+        ).first()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Vulnerability not found")
+    finally:
+        session.close()
+
+    try:
+        result = get_shodan_cve(normalized)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ShodanUnavailable as exc:
+        raise HTTPException(status_code=503, detail="Shodan CVEDB is temporarily unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="No Shodan CVEDB record is available for this CVE")
+    return result
 
 
 @router.get("/vulns/{cve_id}/epss-history")
