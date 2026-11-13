@@ -68,6 +68,23 @@ The GitHub Actions workflow `.github/workflows/threat-intel-sync.yml` is schedul
 
 The parser ignores FIRST's leading `#model_version` metadata line before reading the CSV header. EPSS values are probabilities from 0 to 1; the percentile is a relative ranking, not another probability.
 
+## Shodan CVE enrichment
+
+VulnX can optionally enrich an already-ingested CVE with metadata from Shodan's public CVEDB endpoint. This is a CVE-record lookup, not Shodan host search: it does not query IP addresses, enumerate internet hosts, initiate scans, or discover assets.
+
+- Source: <https://cvedb.shodan.io/>
+- API route: `GET /api/v1/vulns/{cve_id}/shodan`
+- API key: **not required** for this public CVEDB endpoint. No `SHODAN_API_KEY` environment variable is used or expected.
+- Licensing: Shodan states CVEDB is free for non-commercial use; obtain the appropriate Shodan licence before using this integration commercially.
+- Cache: successful records are stored separately in `shodan_cve_intelligence` for 24 hours.
+- Scope: only CVE identifiers already present in VulnX are eligible; unknown CVEs return HTTP 404.
+- Failure handling: upstream errors return a generic HTTP 503 response; the frontend still displays the core NVD/KEV/EPSS record.
+- Provenance: the response includes the Shodan source name, source URL and retrieval timestamp.
+
+The table is created by the existing SQLAlchemy `Base.metadata.create_all` startup path. Deploy the backend normally; no destructive migration or changes to existing CVE records are required. On an existing database, verify `shodan_cve_intelligence` exists after the first successful API startup.
+
+Shodan CVSS, EPSS and KEV fields are displayed as independent third-party metadata. They do not overwrite NVD or FIRST/CISA values and do not alter VulnX's priority score. A Shodan KEV flag or CPE entry is not proof that a particular organisation is affected; confirm products and versions against an authorised asset inventory and vendor advisories.
+
 ## Understanding the dashboard
 
 - **CVSS** describes the technical severity of a vulnerability (0–10); it does not prove exploitation.
@@ -84,7 +101,8 @@ A practical workflow is: search for a CVE or keyword → review severity and thr
 - `GET /api/v1/summary` — CVE totals, severity counts, CISA KEV matches, EPSS ≥10% count and EPSS coverage.
 - `GET /api/v1/vulns?limit=50&offset=0&search=CVE&severity=high` — filtered, paginated CVEs enriched with EPSS probability, EPSS percentile, KEV membership and priority score.
 - `GET /api/v1/vulns/{cve_id}` — CVE details plus available exploitation intelligence and CISA remediation metadata.
-- `GET /api/v1/vulns/{cve_id}/epss-history?days=90` — available daily EPSS snapshots for up to 90 days.
+  - `GET /api/v1/vulns/{cve_id}/epss-history?days=90` — available daily EPSS snapshots for up to 90 days.
+  - `GET /api/v1/vulns/{cve_id}/shodan` — cached Shodan CVEDB metadata for a CVE already stored in VulnX.
   
 The readiness endpoint also checks the required EPSS schema. It returns HTTP 503 with `schema: migration_required` when the database is reachable but the additive migration has not been applied.
 

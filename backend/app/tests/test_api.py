@@ -219,3 +219,59 @@ def test_readiness_reports_required_migration_for_legacy_schema(monkeypatch, tmp
         "schema": "migration_required",
     }
     legacy_engine.dispose()
+
+
+
+def test_shodan_cve_endpoint_returns_independent_enrichment(client, monkeypatch):
+    expected = {
+        "cve_id": "CVE-2025-0001",
+        "summary": "Example third-party CVE summary",
+        "cvss": 8.2,
+        "cvss_version": "3.1",
+        "cvss_v2": None,
+        "cvss_v3": 8.2,
+        "cvss_v4": None,
+        "epss": 0.42,
+        "ranking_epss": 0.91,
+        "kev": True,
+        "propose_action": "Apply vendor guidance.",
+        "ransomware_campaign": None,
+        "references": [],
+        "cpes": [],
+        "published_time": None,
+        "source": "Shodan CVEDB",
+        "source_url": "https://cvedb.shodan.io/cve/CVE-2025-0001",
+        "fetched_at": "2026-11-13T00:00:00Z",
+        "cache_ttl_hours": 24,
+    }
+    monkeypatch.setattr(api_v1, "get_shodan_cve", lambda _cve: expected)
+    response = client.get("/api/v1/vulns/CVE-2025-0001/shodan")
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
+def test_shodan_cve_endpoint_rejects_cves_not_in_vulnx(client, monkeypatch):
+    called = False
+
+    def unexpected_call(_cve):
+        nonlocal called
+        called = True
+        return None
+
+    monkeypatch.setattr(api_v1, "get_shodan_cve", unexpected_call)
+    response = client.get("/api/v1/vulns/CVE-2099-9999/shodan")
+    assert response.status_code == 404
+    assert called is False
+
+
+def test_shodan_cve_endpoint_handles_upstream_unavailable(client, monkeypatch):
+    from app.intel.shodan_cvedb import ShodanUnavailable
+
+    def unavailable(_cve):
+        raise ShodanUnavailable("private upstream detail")
+
+    monkeypatch.setattr(api_v1, "get_shodan_cve", unavailable)
+    response = client.get("/api/v1/vulns/CVE-2025-0001/shodan")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Shodan CVEDB is temporarily unavailable"}
+    assert "private upstream detail" not in response.text

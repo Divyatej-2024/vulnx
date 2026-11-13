@@ -124,3 +124,52 @@ def test_sync_persists_daily_epss_history_and_provenance(tmp_path):
     with factory() as session:
         assert session.query(EPSSHistory).count() == 1
     engine.dispose()
+
+
+def test_shodan_cvedb_normalises_and_caches_passive_cve_metadata(tmp_path):
+    from app.intel.shodan_cvedb import get_shodan_cve
+    from app.models import ShodanCVEIntelligence
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'shodan.db'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    calls = []
+
+    def fake_fetch(cve_id):
+        calls.append(cve_id)
+        return {
+            "cve_id": cve_id,
+            "summary": "Example vulnerability summary",
+            "cvss": 8.2,
+            "cvss_version": "3.1",
+            "cvss_v3": 8.2,
+            "epss": 0.42,
+            "ranking_epss": 0.91,
+            "kev": True,
+            "references": ["https://example.com/advisory"],
+            "cpes": ["cpe:2.3:a:vendor:product:*:*:*:*:*:*:*:*"],
+        }
+
+    first = get_shodan_cve("cve-2025-1234", session_factory=factory, fetcher=fake_fetch)
+    second = get_shodan_cve("CVE-2025-1234", session_factory=factory, fetcher=fake_fetch)
+    assert first["source"] == "Shodan CVEDB"
+    assert first["cvss_v3"] == 8.2
+    assert first["epss"] == 0.42
+    assert first["kev"] is True
+    assert first["references"] == ["https://example.com/advisory"]
+    assert second == first
+    assert calls == ["CVE-2025-1234"]
+
+    with factory() as session:
+        assert session.query(ShodanCVEIntelligence).count() == 1
+    engine.dispose()
+
+
+def test_shodan_cvedb_rejects_invalid_cve_without_calling_upstream():
+    from app.intel.shodan_cvedb import get_shodan_cve
+
+    def unexpected_fetch(_cve_id):
+        raise AssertionError("upstream must not be called for invalid identifiers")
+
+    with pytest.raises(ValueError):
+        get_shodan_cve("not-a-cve", fetcher=unexpected_fetch)

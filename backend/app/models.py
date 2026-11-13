@@ -49,3 +49,25 @@ class EPSSHistory(Base):
     epss_percentile = Column(Float, nullable=False)
     model_version = Column(String(40), nullable=True)
     recorded_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+
+class ShodanCVEIntelligence(Base):
+    """Cached CVE metadata from Shodan's public CVEDB API (not host-scan results)."""
+    __tablename__ = "shodan_cve_intelligence"
+
+    cve_id = Column(String, primary_key=True, index=True)
+    summary = Column(Text, nullable=True)
+    cvss = Column(Float, nullable=True)
+    cvss_version = Column(String(20), nullable=True)
+    cvss_v2 = Column(Float, nullable=True)
+    cvss_v3 = Column(Float, nullable=True)
+    cvss_v4 = Column(Float, nullable=True)
+    epss = Column(Float, nullable=True)
+    ranking_epss = Column(Float, nullable=True)
+    kev = Column(Boolean, nullable=True)
+    propose_action = Column(Text, nullable=True)
+    ransomware_campaign = Column(String(120), nullable=True)
+    references = Column(JSON, nullable=True)
+    cpes = Column(JSON, nullable=True)
+    published_time = Column(String(40), nullable=True)
+    fetched_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
