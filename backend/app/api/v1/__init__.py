@@ -105,10 +105,8 @@ def list_vulns(
                 query = query.filter(Vulnerability.cvss_v3 >= lower, Vulnerability.cvss_v3 < upper)
         total = query.count()
         items = query.order_by(
-            ThreatIntelligence.is_kev.desc().nullslast(),
-            ThreatIntelligence.epss_probability.desc().nullslast(),
-            Vulnerability.cvss_v3.desc().nullslast(),
             Vulnerability.published_date.desc().nullslast(),
+            Vulnerability.cve_id.desc(),
         ).offset(offset).limit(limit).all()
         return {
             "vulns": [_record(vuln, intel) for vuln, intel in items],
